@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.3.2")
+script_version("1.3.3")
 require 'lib.moonloader'
 require 'sampfuncs'
 require 'vkeys'
@@ -32,6 +32,7 @@ local mainIni = inicfg.load({
 		fastMoney_state_c = false,
 		autoAltAndShift_state_c = false,
 		autoSport_state_c = false,
+		moneySeparate_state_c = false,
 	},
 	afktools = {
 		antiafk_state_c = false,
@@ -129,6 +130,7 @@ function imgui.OnDrawFrame()
 			imgui.Checkbox(u8"Оружие по команде", getGuns_state)
             if getGuns_state.v then imgui.Text(u8"/de /m4 /sh /ri /ak /uzi") end
 			imgui.Checkbox(u8"Анти-ломка", antiDrugs_state)
+			imgui.Checkbox(u8"Разделение денег запятыми", moneySeparate_state)
 			imgui.Checkbox(u8"Фикс отправки сообщений в ВИП чат", resendVr_state)
 			imgui.Checkbox(u8"Блокировать падение карскилла", antiCarSkill_state)
 			imgui.Checkbox(u8"Не падать с мото", noBike_state)
@@ -352,6 +354,7 @@ function main()
 	lua_thread.create(fastMoney)
 	lua_thread.create(autoAltAndShift)
 	lua_thread.create(autoSport)
+	lua_thread.create(moneySeparate)
 	imgui.Process = true
 	while true do wait(0)
         imgui.ShowCursor = cursorActive
@@ -2233,6 +2236,55 @@ function autoSport()
 	end)
 	while true do wait(0) end
 end
+function moneySeparate()
+    moneySeparate_state = imgui.ImBool(mainIni.settings.moneySeparate_state_c)
+    function comma_value(n)
+        local left,num,right = string.match(n,'^([^%d]*%d)(%d*)(.-)$')
+        return left..(num:reverse():gsub('(%d%d%d)','%1,'):reverse())..right
+    end
+    function separator(text)
+        if text:find("$") then
+            for S in string.gmatch(text, "%$%d+") do
+                local replace = comma_value(S)
+                text = string.gsub(text, S, replace)
+            end
+            for S in string.gmatch(text, "%d+%$") do
+                S = string.sub(S, 0, #S-1)
+                local replace = comma_value(S)
+                text = string.gsub(text, S, replace)
+            end
+        end
+        return text
+    end
+    addEventHandler("onReceiveRpc",function(id, bs)
+		if id == 61 and moneySeparate_state.v then
+			local did = raknetBitStreamReadInt16(bs)
+			local style = raknetBitStreamReadInt8(bs)
+			local tl = raknetBitStreamReadInt8(bs)
+			local t = raknetBitStreamReadString(bs,tl)
+			local b1l = raknetBitStreamReadInt8(bs)
+			local b1 = raknetBitStreamReadString(bs,b1l)
+			local b2l = raknetBitStreamReadInt8(bs)
+			local b2 = raknetBitStreamReadString(bs,b2l)
+			local text = raknetBitStreamDecodeString(bs,4096)
+            text = separator(text)
+		    t = separator(t)
+            raknetDeleteBitStream(bs)
+            bs = raknetNewBitStream()
+            raknetBitStreamWriteInt16(bs,tonumber(did))
+            raknetBitStreamWriteInt8(bs,tonumber(style))
+            raknetBitStreamWriteInt8(bs,tonumber(tl))
+            raknetBitStreamWriteString(bs,tostring(t))
+            raknetBitStreamWriteInt8(bs,tonumber(b1l))
+            raknetBitStreamWriteString(bs,tostring(b1))
+            raknetBitStreamWriteInt8(bs,tonumber(b2l))
+            raknetBitStreamWriteString(bs,tostring(b2))
+            raknetBitStreamEncodeString(bs,tostring(text))
+            return true, id, bs
+        end
+	end)
+    while true do wait(0) end
+end
 function save()
 	local newData = {
 		settings = {
@@ -2257,6 +2309,7 @@ function save()
 			fastMoney_state_c = fastMoney_state.v,
 			autoAltAndShift_state_c = autoAltAndShift_state.v,
 			autoSport_state_c = autoSport_state.v,
+			moneySeparate_state_c = moneySeparate_state.v,
 		},
 		afktools = {
 			antiafk_state_c = antiafk_state.v,
