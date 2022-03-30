@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.3")
+script_version("1.3.1")
 require 'lib.moonloader'
 require 'sampfuncs'
 require 'vkeys'
@@ -484,6 +484,13 @@ function autoEat()
 			end
             if tostring(text):match("Комплексный Обед") then
                 sampSendDialogResponse(id,1,6,"")
+                return false
+			end
+			if tostring(text):match("{42B02C}%-{FFFFFF} Продать дом игроку") or tostring(text):match("{42B02C}%-{FFFFFF} Предметы недвижимости") then
+				lua_thread.create(function()
+                    wait(1000)
+                    sampSendChat("/jmeat")
+				end)
                 return false
 			end
 		end
@@ -1101,19 +1108,18 @@ function moneySeparate()
 			local b2l = raknetBitStreamReadInt8(bs)
 			local b2 = raknetBitStreamReadString(bs,b2l)
 			local text = raknetBitStreamDecodeString(bs,4096)
-            text = separator(text)
-		    t = separator(t)
+            text = separator(tostring(text))
             raknetDeleteBitStream(bs)
             bs = raknetNewBitStream()
-            raknetBitStreamWriteInt16(bs,tonumber(did))
-            raknetBitStreamWriteInt8(bs,tonumber(style))
-            raknetBitStreamWriteInt8(bs,tonumber(tl))
-            raknetBitStreamWriteString(bs,tostring(t))
-            raknetBitStreamWriteInt8(bs,tonumber(b1l))
-            raknetBitStreamWriteString(bs,tostring(b1))
-            raknetBitStreamWriteInt8(bs,tonumber(b2l))
-            raknetBitStreamWriteString(bs,tostring(b2))
-            raknetBitStreamEncodeString(bs,tostring(text))
+            raknetBitStreamWriteInt16(bs,did)
+            raknetBitStreamWriteInt8(bs,style)
+            raknetBitStreamWriteInt8(bs,tl)
+            raknetBitStreamWriteString(bs,t)
+            raknetBitStreamWriteInt8(bs,b1l)
+            raknetBitStreamWriteString(bs,b1)
+            raknetBitStreamWriteInt8(bs,b2l)
+            raknetBitStreamWriteString(bs,b2)
+			raknetBitStreamEncodeString(bs,text)
             return true, id, bs
 		end
 	end)
