@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.2.6")
+script_version("1.3")
 require 'lib.moonloader'
 require 'sampfuncs'
 require 'vkeys'
