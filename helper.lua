@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.3.1")
+script_version("1.3.2")
 require 'lib.moonloader'
 require 'sampfuncs'
 require 'vkeys'
@@ -19,7 +19,6 @@ local mainIni = inicfg.load({
 		carkey_state_c = false,
 		autopin_state_c = false,
 		autopin_pin_c = "",
-		moneySeparate_state_c = false,
 		chatCalc_state_c = false,
 		getGuns_state_c = false,
 		antiDrugs_state_c = false,
@@ -126,7 +125,6 @@ function imgui.OnDrawFrame()
 			imgui.Checkbox(u8"Авто ключи в автомобиле", carkey_state)
 			imgui.Checkbox(u8"Авто-ввод пин-кода", autopin_state)
 			if autopin_state.v then imgui.InputText(u8"Пин-код", autopin_pin, imgui.InputTextFlags.Password) end
-			imgui.Checkbox(u8"Разделение денежных сумм", moneySeparate_state)
 			imgui.Checkbox(u8"Калькулятор в чате", chatCalc_state)
 			imgui.Checkbox(u8"Оружие по команде", getGuns_state)
             if getGuns_state.v then imgui.Text(u8"/de /m4 /sh /ri /ak /uzi") end
@@ -328,7 +326,6 @@ function main()
 	lua_thread.create(altEnter)
 	lua_thread.create(showTextDraws)
 	lua_thread.create(fakeAfk)
-	lua_thread.create(moneySeparate)
 	lua_thread.create(chatCalc)
 	lua_thread.create(getGuns)
 	lua_thread.create(antiDrugs)
@@ -1076,53 +1073,6 @@ function fakeAfk()
             if sampTextdrawIsExists(223) then sampTextdrawDelete(223) end
 		end
 	end
-end
-function moneySeparate()
-    moneySeparate_state = imgui.ImBool(mainIni.settings.moneySeparate_state_c)
-    function comma_value(n)
-        local left,num,right = string.match(n,'^([^%d]*%d)(%d*)(.-)$')
-        return left..(num:reverse():gsub('(%d%d%d)','%1,'):reverse())..right
-	end
-    function separator(text)
-        if text:find("$") then
-            for S in string.gmatch(text, "%$%d+") do
-                local replace = comma_value(S)
-                text = string.gsub(text, S, replace)
-			end
-            for S in string.gmatch(text, "%d+%$") do
-                S = string.sub(S, 0, #S-1)
-                local replace = comma_value(S)
-                text = string.gsub(text, S, replace)
-			end
-		end
-        return text
-	end
-    addEventHandler("onReceiveRpc",function(id, bs)
-		if id == 61 and moneySeparate_state.v then
-			local did = raknetBitStreamReadInt16(bs)
-			local style = raknetBitStreamReadInt8(bs)
-			local tl = raknetBitStreamReadInt8(bs)
-			local t = raknetBitStreamReadString(bs,tl)
-			local b1l = raknetBitStreamReadInt8(bs)
-			local b1 = raknetBitStreamReadString(bs,b1l)
-			local b2l = raknetBitStreamReadInt8(bs)
-			local b2 = raknetBitStreamReadString(bs,b2l)
-			local text = raknetBitStreamDecodeString(bs,4096)
-            text = separator(tostring(text))
-            raknetDeleteBitStream(bs)
-            bs = raknetNewBitStream()
-            raknetBitStreamWriteInt16(bs,did)
-            raknetBitStreamWriteInt8(bs,style)
-            raknetBitStreamWriteInt8(bs,tl)
-            raknetBitStreamWriteString(bs,t)
-            raknetBitStreamWriteInt8(bs,b1l)
-            raknetBitStreamWriteString(bs,b1)
-            raknetBitStreamWriteInt8(bs,b2l)
-            raknetBitStreamWriteString(bs,b2)
-			raknetBitStreamEncodeString(bs,text)
-            return true, id, bs
-		end
-	end)
 end
 function chatCalc()
     chatCalc_state = imgui.ImBool(mainIni.settings.chatCalc_state_c)
@@ -2294,7 +2244,6 @@ function save()
 			carkey_state_c = carkey_state.v,
 			autopin_state_c = autopin_state.v,
 			autopin_pin_c = autopin_pin.v,
-			moneySeparate_state_c = moneySeparate_state.v,
 			chatCalc_state_c = chatCalc_state.v,
 			getGuns_state_c = getGuns_state.v,
 			antiDrugs_state_c = antiDrugs_state.v,
