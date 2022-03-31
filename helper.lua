@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.4")
+script_version("1.4.1")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -359,7 +359,7 @@ function main()
 	lua_thread.create(moneySeparate)
 	lua_thread.create(function()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
-		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер успешно запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
+		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
 	end)
 	imgui.Process = true
 	while true do wait(0)
@@ -2380,11 +2380,6 @@ function stringSplit(str, pattern)
         table.insert(t, inputstr)
 	end
     return t
-end
-function onScriptTerminate(script, quit)
-    if script == thisScript() then
-        thisScript():reload()
-	end
 end
 function autoupdate(json_url, prefix, url)
     local dlstatus = require('moonloader').download_status
