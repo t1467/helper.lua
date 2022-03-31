@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.4.2")
+script_version("1.4.3")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -588,7 +588,7 @@ function removeLogo()
             local textLen = raknetBitStreamReadInt16(bs)
             local text = raknetBitStreamReadString(bs, textLen)
 			for i = 510, 530 do
-				if tid == i then return false
+				if tid == i then return false end
 			end
 		end
 	end)
