@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.4.1")
+script_version("1.4.2")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -561,6 +561,37 @@ function autoEat()
 end
 function removeLogo()
     removeLogo_state = imgui.ImBool(mainIni.settings.removeLogo_state_c)
+	addEventHandler("onReceiveRpc", function(id,bs)
+		if id == 134 and removeLogo_state.v then
+            local tid = raknetBitStreamReadInt16(bs)
+            local flags = raknetBitStreamReadInt8(bs)
+            local letterW = raknetBitStreamReadFloat(bs)
+            local letterH = raknetBitStreamReadFloat(bs)
+            local letterColor = raknetBitStreamReadInt32(bs)
+            local lineW = raknetBitStreamReadFloat(bs)
+            local lineH = raknetBitStreamReadFloat(bs)
+            local boxColor = raknetBitStreamReadInt32(bs)
+            local shadow = raknetBitStreamReadInt8(bs)
+            local outline = raknetBitStreamReadInt8(bs)
+            local backgroundColor = raknetBitStreamReadInt32(bs)
+            local style = raknetBitStreamReadInt8(bs)
+            local selectable = raknetBitStreamReadInt8(bs)
+            local X = raknetBitStreamReadFloat(bs)
+            local Y = raknetBitStreamReadFloat(bs)
+            local model = raknetBitStreamReadInt16(bs)
+            local rotX = raknetBitStreamReadFloat(bs)
+            local rotY = raknetBitStreamReadFloat(bs)
+            local rotZ = raknetBitStreamReadFloat(bs)
+            local zoom = raknetBitStreamReadFloat(bs)
+            local color1 = raknetBitStreamReadInt16(bs)
+            local color2 = raknetBitStreamReadInt16(bs)
+            local textLen = raknetBitStreamReadInt16(bs)
+            local text = raknetBitStreamReadString(bs, textLen)
+			for i = 510, 530 do
+				if tid == i then return false
+			end
+		end
+	end)
     while true do wait(0)
         if removeLogo_state.v then
             for i = 510, 530 do
