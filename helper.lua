@@ -1,12 +1,14 @@
 script_name("UNKNOWN")
-script_version("1.3.3")
+script_version("1.4")
 require 'lib.moonloader'
 require 'sampfuncs'
-require 'vkeys'
+local vkeys = require 'vkeys'
+local rkeys = require 'rkeys'
 local memory = require 'memory'
 local encoding = require 'encoding'
 local inicfg = require 'inicfg'
 local imgui = require('imgui')
+imgui.HotKey = require('imgui_addons').HotKey
 encoding.default = 'CP1251'
 u8 = encoding.UTF8
 local mainIni = inicfg.load({
@@ -355,6 +357,10 @@ function main()
 	lua_thread.create(autoAltAndShift)
 	lua_thread.create(autoSport)
 	lua_thread.create(moneySeparate)
+	lua_thread.create(function()
+		repeat wait(0) until sampIsLocalPlayerSpawned()
+		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер успешно запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
+	end)
 	imgui.Process = true
 	while true do wait(0)
         imgui.ShowCursor = cursorActive
@@ -378,8 +384,8 @@ function activate()
     addEventHandler("onSendRpc", function(id,bs)
 		if id == 50 then
 			local lenght = raknetBitStreamReadInt32(bs)
-			local text = tostring(raknetBitStreamReadString(bs,lenght))
-			if text == ("/"..tostring(activate_cmd.v)) then
+			local text = raknetBitStreamReadString(bs,lenght)
+			if text == ("/"..activate_cmd.v) then
                 main_window = true
                 cursorActive = true
                 playerLock = true
@@ -387,6 +393,7 @@ function activate()
 			end
 		end
 	end)
+	while true do wait(0) end
 end
 function antiafk()
     antiafk_state = imgui.ImBool(mainIni.afktools.antiafk_state_c)
@@ -421,12 +428,13 @@ function autologin()
 			local style = raknetBitStreamReadInt8(bs)
 			local title_lenght = raknetBitStreamReadInt8(bs)
 			local title = raknetBitStreamReadString(bs,title_lenght)
-			if tostring(title):match("[{]BFBBBA[}]Авторизация") and tostring(style) == "3" then
+			if title:match("{BFBBBA}Авторизация") and tonumber(style) == 3 then
 				sampSendDialogResponse(id,1,1,autologin_pass.v)
 				return false
 			end
 		end
 	end)
+	while true do wait(0) end
 end
 function cursor()
     while true do wait(0)
@@ -443,9 +451,9 @@ function autoEat()
         if id == 73 and autoEat_state.v then
             local style = raknetBitStreamReadInt32(bs)
             local time = raknetBitStreamReadInt32(bs)
-            local ml = raknetBitStreamReadInt32(bs)
-            local m = tostring(raknetBitStreamReadString(bs,ml))
-            if m:find('You are hungry!') or m:find('You are very hungry!') then
+            local textlenght = raknetBitStreamReadInt32(bs)
+			local text = raknetBitStreamReadString(bs,textlenght)
+            if text:match('You are hungry%!') or text:match('You are very hungry%!') then
                 eat = true
                 lua_thread.create(function()
                     wait(5000)
@@ -460,7 +468,7 @@ function autoEat()
 			local animlib = raknetBitStreamReadString(bs,animlibl)
 			local animnamel = raknetBitStreamReadInt8(bs)
 			local animname = raknetBitStreamReadString(bs,animnamel)
-			if tostring(animname) == "EAT_Burger" then
+			if animname == "EAT_Burger" then
 				return false
 			end
 		end
@@ -474,19 +482,19 @@ function autoEat()
 			local b2l = raknetBitStreamReadInt8(bs)
 			local b2 = raknetBitStreamReadString(bs,b2l)
 			local text = raknetBitStreamDecodeString(bs,4096)
-			if tostring(text):match("[{]42B02C[}][-][{]FFFFFF[}] [{](.+)[{](.+)[{]FFFFFF[}] дом") or tostring(text):match("[{]42B02C[}][-][{]FFFFFF[}] Меню дома") then
+			if text:match("{42B02C}%-{FFFFFF} {A5EC67}Открыть{FFFFFF} дом") or text:match("{42B02C}%-{FFFFFF} {EC6767}Закрыть{FFFFFF} дом") then
                 sampSendDialogResponse(id,1,1,"")
                 return false
 			end
-            if tostring(text):match("[{]42B02C[}][-][{]FFFFFF[}] Холодильник") then
+            if text:match("{42B02C}%-{FFFFFF} Холодильник") then
                 sampSendDialogResponse(id,1,2,"")
                 return false
 			end
-            if tostring(text):match("Комплексный Обед") then
+            if text:match("Комплексный Обед") then
                 sampSendDialogResponse(id,1,6,"")
                 return false
 			end
-			if tostring(text):match("{42B02C}%-{FFFFFF} Продать дом игроку") or tostring(text):match("{42B02C}%-{FFFFFF} Предметы недвижимости") then
+			if text:match("{42B02C}%-{FFFFFF} Продать дом игроку") or text:match("{42B02C}%-{FFFFFF} Предметы недвижимости") then
 				lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/jmeat")
@@ -497,49 +505,50 @@ function autoEat()
         if id == 93 and autoEat_state.v and eat then
             color = raknetBitStreamReadInt32(bs)
             count = raknetBitStreamReadInt32(bs)
-            text = tostring(raknetBitStreamReadString(bs, count))
-            if text:match("(.)Ошибка(.) [{]FFFFFF[}]Вы не у своего дома") then
+			text = raknetBitStreamReadString(bs, count)
+            if text:match("%[Ошибка%] {FFFFFF}Вы не у своего дома") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/jmeat")
 				end)
                 return false
 			end
-            if text:match("(.)Ошибка(.) [{]FFFFFF[}]Вы не живете ни (.+) из домов") then
+            if text:match("%[Ошибка%] {FFFFFF}Вы не живете ни .+ из домов") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/jmeat")
 				end)
                 return false
 			end
-            if text:match("В доме недостаточно продуктов[,] купить их можно в закусочной[!]") then
+            if text:match("В доме недостаточно продуктов, купить их можно в закусочной%!") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/jmeat")
 				end)
-                return false
+				eat = false
+				return false
 			end
-            if text:match("У тебя нет жареного мяса оленины[!]") then
+            if text:match("У тебя нет жареного мяса оленины%!") then
                 autoEat_state.v = false
-                sampAddChatMessage("{c41e3a}[Helper]: {ffffff}У вас закончилась оленина, авто-еда отключена",-1)
+                sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}У вас закончилась оленина, авто-еда отключена",-1)
 				eat = false
                 return false
 			end
-            if text:match("(.)Ошибка(.) [{]FFFFFF[}]Вам отключили электроэнергию[!] Оплатите коммуналку[!]") then
+            if text:match("%[Ошибка%] {FFFFFF}Вам отключили электроэнергию%! Оплатите коммуналку%!") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/jmeat")
 				end)
                 return false
 			end
-            if text:match("(.)Ошибка(.) [{]FFFFFF[}]Вы не в своём доме[!]") then
+            if text:match("%[Ошибка%] {FFFFFF}Вы не в своём доме%!") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/jmeat")
 				end)
                 return false
 			end
-            if text:match("(.)Ошибка(.) [{]FFFFFF[}]У вас нет мешка с мясом[!]") then
+            if text:match("%[Ошибка%] {FFFFFF}У вас нет мешка с мясом%!") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/hmenu")
@@ -590,7 +599,7 @@ function skipZZ()
 			local b2l = raknetBitStreamReadInt8(bs)
 			local b2 = raknetBitStreamReadString(bs,b2l)
 			local text = raknetBitStreamDecodeString(bs,4096)
-			if tostring(text):match("В этом месте запрещено") and tostring(text):match("драться[/]стрелять") then
+			if text:match("В этом месте запрещено") and text:match("драться/стрелять") then
 				return false
 			end
 		end
@@ -605,6 +614,7 @@ function skipZZ()
 			end
 		end
 	end)
+	while true do wait(0) end
 end
 function removeTrash()
     removeTrash_enable = imgui.ImBool(mainIni.removeTrash.state_c)
@@ -623,135 +633,135 @@ function removeTrash()
     removeTrash_sobes_status = imgui.ImBool(mainIni.removeTrash.sobes_status_c)
     removeTrash_prison_status = imgui.ImBool(mainIni.removeTrash.prison_status_c)
     removeTrash_events = {
-        "(.)PUBG(.) Внимание[!] Через 15 минут в 19[:]05 начнется матч по игре PUBG(.) Призы за ТОП[-]3[:] [{]FFD700[}]2000[,] 1500[,] 500 AZ Coins[{]ffffff[}](.)",
-        "(.)DM[-]арена(.) [{]FFFFFF[}]Условия турнира[:] за каждое убийство [{]33AA33[}](.+)%d+[,]%d+[{]ffffff[}] и смерть [{]ae433d[}](.+)%d+[,]%d+[{]ffffff[}]",
-        "(.)DM[-]арена(.) [{]FFFFFF[}]Внимание[!] Через %d+ минут стартует турнир[,] принять могут все желающие(.) [(] [/]gps [-] Разное [-] DM арена [)]",
-        "(.)Автомобильный аукцион(.) Через %d+ минут в %d+[:]%d+ стартует аукцион автомобилей[!] [(] [/]gps [-] Автосалоны [-] Автомобильный аукцион [)]",
-        "(.)Горячая Звезда(.) Мероприятие завершилось без определения победителя[,] так как в момент завершения горячая звезда находилась на земле[!]",
-        "(.)Подсказка(.) [{]FF6347[}]Мероприятие[:] (.)Собиратели(.)[,] начнется в [{]FFFFFF[}]20(.)15[!][{]FF6347[}] Используйте[:] [/]findcollectors",
-        "(.+)[{]FFFFFF[}]Уважаемые жители[,] арендатор концертного зала[:] (.+)[_](.+)(.)%d+(.) проводит мероприятие(.) Присоединяйтесь[!] [(]GPS [-] Развлечения[)](.)",
-        "(.)PUBG(.) [{]ffffff[}]Внимание[!] Турнир был завершен[,] список ТОП[-]3 победителей[:]",
-        "%d(.) [{]FFFFFF[}](.+)[_](.+) заработал [{]ae433d[}]%d+ AZ Coins",
-        "(.)Автомобильный аукцион(.) Внимание[!] На пляже Santa Maria проводится автомобильный аукцион[!] [(] [/]gps [-] Автосалоны [-] Автомобильный аукцион [)]",
-        "(.)PUBG(.) Регистрация уже доступна[!] [(] [/]gps [-] Мероприятия [-] PUBG [)]",
-        "(.)PUBG(.) Внимание[!] Через %d+ минуту в %d+[:]%d+ начнется матч по игре PUBG[.] Призы за ТОП[-]3[:] [{]FFD700[}]2000[,] 1500[,] 500 AZ Coins[{]ffffff[}](.)",
-        "(.)Мероприятие(.) [{]ffffff[}]Телепорт на мероприятие закрыт[,] время вышло(.)",
-        "(.)Информация(.) Самолёты с гумманитарной помощью сбросили %d+ подарков по всей карте штата[,] найдите и заберите ценный подарок[!]",
-        "(.)Внимание(.) Началась регистрация на мероприятие (.)Воздушный Бой(.) [|] [/]gps (.+) День Защитника (.+) Регистрация на мероприятия",
-        "(.)Внимание(.) Началась регистрация на мероприятие (.)Звёздные заезды(.) [|] [/]gps (.+) День Защитника (.+) Регистрация на мероприятия",
-        "Битва за контроль грузового корабля начнется через %d+ минут[!] Используйте [/]govess",
-        "Внимание[!] Уже через %d+ минут начинается распродажа одежды в секонд[-]хенде [№]2[!]",
-		"Внимание[!] Уже через 5 минут начинается распродажа одежды в (.+)",
-        "(.)DM[-]арена(.) [{]FFFFFF[}]Внимание[!] Начался турнир для всех желающих(.) [(] [/]gps [-] Разное [-] DM арена [)]",
-        "(.)PUBG(.) Внимание[!] Через %d+ минут в %d+[:]%d+ начнется матч по игре PUBG(.) Призы за ТОП[-]3[:] [{]FFD700[}]2000[,] 1500[,] 500 AZ Coins[{]ffffff[}](.)",
-        "(.)DM[-]арена(.) [{]FFFFFF[}]Условия турнира[:] за каждое убийство [{]33AA33[}][+](.)%d+[{]ffffff[}] и смерть [{]ae433d[}][-](.)%d+[{]ffffff[}]",
-        "(.)Конные скачки(.) [{]FFFFFF[}]Внимание[!] Через %d+ минут откроется приём ставок(.) [(] [/]gps [-] Разное [)]",
-        "(.)Автомобильный аукцион(.) Внимание[!] Начался аукцион автомобилей[!] [(] [/]gps [-] Автосалоны [-] Автомобильный аукцион [)]",
+        "%[PUBG%] Внимание%! Через 15 минут в 19:05 начнется матч по игре PUBG. Призы за ТОП%-3: {FFD700}2000, 1500, 500 AZ Coins{ffffff}.",
+        "%[DM%-арена%] {FFFFFF}Условия турнира: за каждое убийство {33AA33}.+%d+,%d+{ffffff} и смерть {ae433d}.+%d+,%d+{ffffff}",
+        "%[DM%-арена%] {FFFFFF}Внимание! Через %d+ минут стартует турнир, принять могут все желающие. %( /gps %- Разное %- DM арена %)",
+        "%[Автомобильный аукцион%] Через %d+ минут в %d+:%d+ стартует аукцион автомобилей%! %( /gps %- Автосалоны %- Автомобильный аукцион %)",
+        "%[Горячая Звезда%] Мероприятие завершилось без определения победителя, так как в момент завершения горячая звезда находилась на земле%!",
+        "%[Подсказка%] {FF6347}Мероприятие: .Собиратели., начнется в {FFFFFF}20.15%!{FF6347} Используйте: /findcollectors",
+        ".+{FFFFFF}Уважаемые жители, арендатор концертного зала: .+%[%d+%] проводит мероприятие. Присоединяйтесь%! %(GPS %- Развлечения%).",
+        "%[PUBG%] {ffffff}Внимание%! Турнир был завершен, список ТОП%-3 победителей:",
+        "%d. {FFFFFF}.+ заработал {ae433d}%d+ AZ Coins",
+        "%[Автомобильный аукцион%] Внимание%! На пляже Santa Maria проводится автомобильный аукцион%! %( /gps %- Автосалоны %- Автомобильный аукцион %)",
+        "%[PUBG%] Регистрация уже доступна%! %( /gps %- Мероприятия %- PUBG %)",
+        "%[PUBG%] Внимание%! Через %d+ минуту в %d+:%d+ начнется матч по игре PUBG. Призы за ТОП%-3: {FFD700}2000, 1500, 500 AZ Coins{ffffff}.",
+        "%[Мероприятие%] {ffffff}Телепорт на мероприятие закрыт, время вышло.",
+        "%[Информация%] Самолёты с гумманитарной помощью сбросили %d+ подарков по всей карте штата, найдите и заберите ценный подарок%!",
+        "%[Внимание%] Началась регистрация на мероприятие .Воздушный Бой. | /gps .+ День Защитника .+ Регистрация на мероприятия",
+        "%[Внимание%] Началась регистрация на мероприятие .Звёздные заезды. | /gps .+ День Защитника .+ Регистрация на мероприятия",
+        "Битва за контроль грузового корабля начнется через %d+ минут%! Используйте /govess",
+        "Внимание%! Уже через %d+ минут начинается распродажа одежды в секонд%-хенде №%d+%!",
+		"Внимание%! Уже через 5 минут начинается распродажа одежды в .+",
+        "%[DM%-арена%] {FFFFFF}Внимание%! Начался турнир для всех желающих. %( /gps %- Разное %- DM арена %)",
+        "%[PUBG%] Внимание%! Через %d+ минут в %d+:%d+ начнется матч по игре PUBG. Призы за ТОП%-3: {FFD700}2000, 1500, 500 AZ Coins{ffffff}.",
+        "%[DM%-арена%] {FFFFFF}Условия турнира: за каждое убийство {33AA33}%+.%d+{ffffff} и смерть {ae433d}%-.%d+{ffffff}",
+        "%[Конные скачки%] {FFFFFF}Внимание! Через %d+ минут откроется приём ставок. %( /gps %- Разное %)",
+        "%[Автомобильный аукцион%] Внимание%! Начался аукцион автомобилей%! %( /gps %- Автосалоны %- Автомобильный аукцион %)",
+		"Мероприятие .Зловещий дворец. завершено%!",
 	}
     removeTrash_help = {
-        "Не снимайте наушники[,] пока не закончите тренировку[,] иначе вы можете попасть в больницу[!]",
-        "(.)Информация(.) [{]FFFFFF[}]Вы можете заправить полный бак [-] нажав на стоимость топлива",
-        "(.)Информация(.) [{]FFFFFF[}]Используйте курсор чтобы выбрать тип топлива и его кол[-]во",
-        "Возьмите материалы и начните сборку заново(.)",
-        "(.)Ошибка(.) [{]FFFFFF[}]Отнесите материалы к остальным материалам(.)",
-        "(.)Информация(.) [{]FFFFFF[}]Узнать цвета можно на форуме forum(.)arizona[-]rp(.)com",
-        "(.)Информация(.) [{]FFFFFF[}]Подойдите к машине и переодически жмите левую клавишу мышки [,] для того чтобы ее покрасить[!]",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]Чтобы включить радио используйте кнопку [{]DFCFCF[}]R",
-        "(.)Подсказка(.)[{]FFFFFF[}] Используйте [/]phone [-] menu[,] чтобы найти членов организаций(.)",
-        "(.)Подсказка(.) [{]ffffff[}]Чтобы клиент был засчитан в квест[/]достижения[,] в зарплату в PayDay[,] нужно проезжать с ним более длинные расстояния(.)",
-        "(.+)[{]FFFFFF[}] [-] У вас недостаточно денег(.) Вы можете пополнить свой баланс (.)[/]donate(.)",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]Вы можете задать вопрос в нашу техническую поддержку [/]report",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]Советуем получить паспорт[,] а затем отправиться на ферму или завод для заработка денег на права(.)",
-        "[{]DFCFCF[}](.)Подсказка(.)[{]8F1E1E[}] У вас не привязан e[-]mail адрес(.) Привяжите его дабы подтвердить ваш аккаунт [/]mm [-] Настройки [-] e[-]mail(.)",
-        "[{]DFCFCF[}](.+)[{]DC4747[}] Пока вы малоимущий [{]DFCFCF[}][(]до 4[-]го уровня[)][{]DC4747[}][,] на улице вы можете попрошайничать деньги(.)",
-        "(.)Информация(.)[{]FFFFFF[}] Хотдог для вас бесплатный[!] Осталось %d+ талонов на бесплатный хотдог",
-        "[{]DC4747[}]Используйте команду [{]DFCFCF[}][/]beg[{]DC4747[}][,] чтобы поставить табличку и банку для денег[!]",
-        "(.)Подсказка(.) С помощью телефона можно заказать такси(.) Среднее время ожидания [-] 2 минуты[!]",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]Ваш текущий навык вождения[:] [{]DFCFCF[}](.)%d+[/]%d+(.)[{]DC4747[}]  Информация[:] [/]carskill",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]В транспорте может присутствует радио[{]DFCFCF[}] (.)[/]radio(.)",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]Для управления поворотниками используйте клавиши[:] [{]DFCFCF[}][(]Q[/]E[)]",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]Чтобы завести двигатель введите [{]DFCFCF[}][/]engine[{]DC4747[}] или нажмите [{]DFCFCF[}]N",
-        "Используйте клавишу (.)Y(.) для того, чтобы показать курсор управления или (.)ESC(.) [-] скрыть",
-        "Устроиться на работу можно в центре занятости(.)",
-        "Вы подобрали мусор[,] отнесите его в машину [(]ALT сзади авто[)]",
-        "(.)Подсказка(.) Теперь вы будете получать зарплату вдвое больше [(]если будете работать вместе[)]",
-        "(.)Подсказка(.) Чтобы разорвать партнерство[,] введите [/]roadpartner",
-        "(.)Подсказка(.) Откройте карту ремонта дорог(.+)roadmap[)] и узнайте где требуется ремонт",
-        "[{]73B461[}]Поступил вызов[,] чтобы принять введите [/]gopolice",
-		"(.)Подсказка(.) Игроки владеющие 4[-]я домами могут бесплатно раз в день получать (.)2 Ларца Олигарха(.) в банке и его отделениях(.)",
-        "Чтобы закрыть рулетку[,] используйте[:] [{]FFFFFF[}][']ESC[']",
-        "(.)Подсказка(.) [{]FFFFFF[}]Добыча на земле[,] беги хватай[!]",
-        "(.)В(.) Шлагбаум закроется через %d+ секунд",
-		"(.)Подсказка(.) Чтобы собрать урожай[,] дождитесь созревания урожая",
-		"(.)Подсказка(.) После того как урожай созреет[,] подойдите к грядке нажмите (.)ALT(.)[!]",
+        "Не снимайте наушники, пока не закончите тренировку, иначе вы можете попасть в больницу%!",
+        "%[Информация%] {FFFFFF}Вы можете заправить полный бак %- нажав на стоимость топлива",
+        "%[Информация%] {FFFFFF}Используйте курсор чтобы выбрать тип топлива и его кол%-во",
+        "Возьмите материалы и начните сборку заново.",
+        "%[Ошибка%] {FFFFFF}Отнесите материалы к остальным материалам.",
+        "%[Информация%] {FFFFFF}Узнать цвета можно на форуме forum.arizona%-rp.com",
+        "%[Информация%] {FFFFFF}Подойдите к машине и переодически жмите левую клавишу мышки.+для того чтобы ее покрасить%!",
+        "{DFCFCF}%[Подсказка%] {DC4747}Чтобы включить радио используйте кнопку {DFCFCF}R",
+        "%[Подсказка%]{FFFFFF} Используйте /phone %- menu, чтобы найти членов организаций.",
+        "%[Подсказка%] {ffffff}Чтобы клиент был засчитан в квест/достижения, в зарплату в PayDay, нужно проезжать с ним более длинные расстояния.",
+        ".+{FFFFFF} %- У вас недостаточно денег. Вы можете пополнить свой баланс ./donate.",
+        "{DFCFCF}%[Подсказка%] {DC4747}Вы можете задать вопрос в нашу техническую поддержку /report",
+        "{DFCFCF}%[Подсказка%] {DC4747}Советуем получить паспорт, а затем отправиться на ферму или завод для заработка денег на права.",
+        "{DFCFCF}%[Подсказка%]{8F1E1E} У вас не привязан e%-mail адрес. Привяжите его дабы подтвердить ваш аккаунт /mm %- Настройки %- e%-mail.",
+        "{DFCFCF}.+{DC4747} Пока вы малоимущий {DFCFCF}%(до 4%-го уровня%){DC4747}, на улице вы можете попрошайничать деньги.",
+        "%[Информация%]{FFFFFF} Хотдог для вас бесплатный%! Осталось %d+ талонов на бесплатный хотдог",
+        "{DC4747}Используйте команду {DFCFCF}/beg{DC4747}, чтобы поставить табличку и банку для денег%!",
+        "%[Подсказка%] С помощью телефона можно заказать такси. Среднее время ожидания %- 2 минуты%!",
+        "{DFCFCF}%[Подсказка%] {DC4747}Ваш текущий навык вождения: {DFCFCF}.%d+/%d+.{DC4747}  Информация: /carskill",
+        "{DFCFCF}%[Подсказка%] {DC4747}В транспорте может присутствует радио{DFCFCF} ./radio.",
+        "{DFCFCF}%[Подсказка%] {DC4747}Для управления поворотниками используйте клавиши: {DFCFCF}%(Q/E%)",
+        "{DFCFCF}%[Подсказка%] {DC4747}Чтобы завести двигатель введите {DFCFCF}/engine{DC4747} или нажмите {DFCFCF}N",
+        "Используйте клавишу .Y. для того, чтобы показать курсор управления или .ESC. %- скрыть",
+        "Устроиться на работу можно в центре занятости.",
+        "Вы подобрали мусор, отнесите его в машину %(ALT сзади авто%)",
+        "%[Подсказка%] Теперь вы будете получать зарплату вдвое больше %(если будете работать вместе%)",
+        "%[Подсказка%] Чтобы разорвать партнерство, введите /roadpartner",
+        "%[Подсказка%] Откройте карту ремонта дорог.+roadmap%) и узнайте где требуется ремонт",
+        "{73B461}Поступил вызов, чтобы принять введите /gopolice",
+		"%[Подсказка%] Игроки владеющие 4%-я домами могут бесплатно раз в день получать .2 Ларца Олигарха. в банке и его отделениях.",
+        "Чтобы закрыть рулетку, используйте: {FFFFFF}'ESC'",
+        "%[Подсказка%] {FFFFFF}Добыча на земле, беги хватай%!",
+        ".В. Шлагбаум закроется через %d+ секунд",
+		"%[Подсказка%] Чтобы собрать урожай, дождитесь созревания урожая",
+		"%[Подсказка%] После того как урожай созреет, подойдите к грядке нажмите .ALT.%!",
 	}
     removeTrash_ad = {
-        "[-] Наш сайт[:] arizona[-]rp(.)com [(]Личный кабинет[/]Донат[)]",
-        "[-] Пригласи друга и получи бонус в размере (.)300 000[!]",
-        "[-] Основные команды сервера[:] [/]menu [/]help [/]gps [/]settings",
+        "%- Наш сайт: arizona%-rp.com %(Личный кабинет/Донат%)",
+        "%- Пригласи друга и получи бонус в размере .300 000%!",
+        "%- Основные команды сервера: /menu /help /gps /settings",
         "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~",
         "В нашем магазине ты можешь приобрести нужное количество игровых денег и потратить",
-        "их на желаемый тобой [{]FFFFFF[}]бизнес[,] дом[,] аксессуар[{]6495ED[}] или на покупку каких[-]нибудь безделушек(.)",
-        "[-] Игроки со статусом [{]FFFFFF[}]VIP[{]6495ED[}] имеют больше возможностей[,] подробнее [/]help (.)Преимущества VIP(.)",
-        "[-] Игроки со статусом [{]FFFFFF[}]VIP[{]6495ED[}] имеют большие возможности[,] подробнее [/]help (.)Преимущества VIP(.)",
-        "[-] В магазине также можно приобрести редкие [{]FFFFFF[}]автомобили[,] аксессуары[,] воздушные шары[{]6495ED[}] и",
-        "[-] В магазине так[-]же можно приобрести редкие [{]FFFFFF[}]автомобили[,] аксессуары[,] воздушные шары[{]6495ED[}][,]",
-        "предметы[,] которые выделят тебя из толпы[!] Наш сайт[:] [{]FFFFFF[}]arizona[-]rp(.)com",
+        "их на желаемый тобой {FFFFFF}бизнес, дом, аксессуар{6495ED} или на покупку каких%-нибудь безделушек.",
+        "%- Игроки со статусом {FFFFFF}VIP{6495ED} имеют больше возможностей, подробнее /help .Преимущества VIP.",
+        "%- Игроки со статусом {FFFFFF}VIP{6495ED} имеют большие возможности, подробнее /help .Преимущества VIP.",
+        "%- В магазине также можно приобрести редкие {FFFFFF}автомобили, аксессуары, воздушные шары{6495ED} и",
+        "%- В магазине так%-же можно приобрести редкие {FFFFFF}автомобили, аксессуары, воздушные шары%{6495ED},",
+        "предметы, которые выделят тебя из толпы%! Наш сайт: {FFFFFF}arizona%-rp.com",
 	}
     removeTrash_player = {
-        "(.)Информация(.)[{]FFFFFF[}] Игрок (.+)[_](.+) приобрел Titan VIP(.)",
-        "(.)Информация(.) (.+)[_](.+) при сборе урожая на ферме словил грядку для собственного выращивания льна(.)",
-        "(.)Информация(.)[{]FFFFFF[}] Игрок (.+)[_](.+) приобрел PREMIUM VIP(.)",
-        "(.+) Игрок [{]FF6347[}](.+)[_](.+)[(]%d+[)][{]FFFFFF[}] купил улучшение [{]FF6347[}](.)Бизнесмен(.)[{]FFFFFF[}][,] теперь он может владеть 5[-]ю бизнесами(.)",
-        "(.+) Игрок [{]FF6347[}](.+)[_](.+)[(]%d+[)][{]FFFFFF[}] купил улучшение [{]FF6347[}](.)Больше недвижимости(.)[{]FFFFFF[}][,] теперь он может владеть 4 домами(.)",
-        "(.+)[_](.+) испытал удачу при открытии (.+) и выиграл(.+)",
-        "(.)Информация(.) (.+)[_](.+) при сборе урожая на ферме словил (.+)",
+        "%[Информация%]{FFFFFF} Игрок .+ приобрел Titan VIP.",
+        "%[Информация%] .+ при сборе урожая на ферме словил грядку для собственного выращивания льна.",
+        "%[Информация%]{FFFFFF} Игрок .+ приобрел PREMIUM VIP.",
+        ".+ Игрок {FF6347}.+%(%d+%){FFFFFF} купил улучшение {FF6347}.Бизнесмен.{FFFFFF}, теперь он может владеть 5%-ю бизнесами.",
+        ".+ Игрок {FF6347}.+%(%d+%){FFFFFF} купил улучшение {FF6347}.Больше недвижимости.{FFFFFF}, теперь он может владеть 4 домами.",
+        ".+ испытал удачу при открытии .+ и выиграл.+",
+        "%[Информация%] .+ при сборе урожая на ферме словил .+",
 	}
     removeTrash_trash = {
-        "(.+)[_](.+)(.)%d+(.) очень громко кашлянул",
-        "Чтобы закрыть донат меню[,] используйте[:] [{]FFFFFF[}](.)ESC(.)",
-        " Двигатель успешно завелся [|] [-]  ",
-        "(.)Информация(.) [{]FFFFFF[}]Спасибо за ваш отзыв[!]",
-        "Если за вами необходимо срочно проследить[,] администрация сделает это вне очереди[!]",
-        "Рекомендуем кушать в закусочных[,] там намного дешевле[!]",
-        "Вы немного перекусили(.) Посмотреть состояние голода можно [{]FFFFFF[}][/]satiety",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]На сервере есть инвентарь[,] используйте клавишу Y для работы с ним[.]",
-        "[{]DFCFCF[}](.)Подсказка(.) [{]DC4747[}]Вы можете задать вопрос в нашу техническую поддержку [/]report[.]",
-        "Вы успешно приготовили %d жареный кусок мяса оленины[!] Чтобы покушать[,] используйте[:] [/]eat или [/]jmeat",
-        "Игрок подтвердил сделку[!]",
-        "Вы подтвердили сделку[!]",
-        "(.)Ошибка(.) [{]FFFFFF[}]Подождите немного(.)(.)(.)",
-        "Вы взяли (.+) Посмотреть состояние голода можно [{]FFFFFF[}][/]satiety",
-        "(.)Подсказка(.) С помощью телефона можно заказать такси(.) Среднее время ожидания [-] 2 минуты[!]",
-        "Обратите внимание что имея улучшение халявщик вы будете платить в 2 раза меньше[!]",
-		"Отредактировал сотрудник СМИ (.) (.+) (.) [:] (.+)(.)(%d+)(.)",
+        "Чтобы закрыть донат меню, используйте: {FFFFFF}.ESC.",
+        "Двигатель успешно завелся | %-  ",
+        "%[Информация%] {FFFFFF}Спасибо за ваш отзыв%!",
+        "Если за вами необходимо срочно проследить, администрация сделает это вне очереди%!",
+        "Рекомендуем кушать в закусочных, там намного дешевле%!",
+        "Вы немного перекусили. Посмотреть состояние голода можно {FFFFFF}/satiety",
+        "{DFCFCF}%[Подсказка%] {DC4747}На сервере есть инвентарь, используйте клавишу Y для работы с ним.",
+        "{DFCFCF}%[Подсказка%] {DC4747}Вы можете задать вопрос в нашу техническую поддержку /report.",
+        "Вы успешно приготовили %d жареный кусок мяса оленины%! Чтобы покушать, используйте: /eat или /jmeat",
+        "Игрок подтвердил сделку%!",
+        "Вы подтвердили сделку%!",
+        "%[Ошибка%] {FFFFFF}Подождите немного.+",
+        "Вы взяли .+ Посмотреть состояние голода можно {FFFFFF}/satiety",
+        "%[Подсказка%] С помощью телефона можно заказать такси. Среднее время ожидания %- 2 минуты%!",
+        "Обратите внимание что имея улучшение халявщик вы будете платить в 2 раза меньше%!",
+		"Отредактировал сотрудник СМИ %[ .+ %] : .+%[%d+%]",
 	}
     removeTrash_phone = {
-        "[[]Подсказка[]] [{]FFFFFF[}]Номера телефонов государственных служб[:]",
-        "[{]FFFFFF[}]1[.][{]6495ED[}] 111 [-] [{]FFFFFF[}]Проверить баланс телефона",
-        "[{]FFFFFF[}]2[.][{]6495ED[}] 060 [-] [{]FFFFFF[}]Служба точного времени",
-        "[{]FFFFFF[}]3[.][{]6495ED[}] 911 [-] [{]FFFFFF[}]Полицейский участок",
-        "[{]FFFFFF[}]4[.][{]6495ED[}] 912 [-] [{]FFFFFF[}]Скорая помощь",
-        "[{]FFFFFF[}]5[.][{]6495ED[}] 913 [-] [{]FFFFFF[}]Такси",
-        "[{]FFFFFF[}]6[.][{]6495ED[}] 914 [-] [{]FFFFFF[}]Механик",
-        "[{]FFFFFF[}]7[.][{]6495ED[}] 8828 [-] [{]FFFFFF[}]Справочная центрального банка",
-        "[{]FFFFFF[}]8[.][{]6495ED[}] 997 [-] [{]FFFFFF[}]Служба по вопросам жилой недвижимости [(]узнать владельца дома[)]",
+        "%[Подсказка%] {FFFFFF}Номера телефонов государственных служб:",
+        "{FFFFFF}1.{6495ED} 111 %- {FFFFFF}Проверить баланс телефона",
+        "{FFFFFF}2.{6495ED} 060 %- {FFFFFF}Служба точного времени",
+        "{FFFFFF}3.{6495ED} 911 %- {FFFFFF}Полицейский участок",
+        "{FFFFFF}4.{6495ED} 912 %- {FFFFFF}Скорая помощь",
+        "{FFFFFF}5.{6495ED} 913 %- {FFFFFF}Такси",
+        "{FFFFFF}6.{6495ED} 914 %- {FFFFFF}Механик",
+        "{FFFFFF}7.{6495ED} 8828 %- {FFFFFF}Справочная центрального банка",
+        "{FFFFFF}8.{6495ED} 997 %- {FFFFFF}Служба по вопросам жилой недвижимости %(узнать владельца дома%)",
 	}
     removeTrash_bonus = {
-        "[{]BFBBBA[}]Акции на Arizona Role Play",
+        "{BFBBBA}Акции на Arizona Role Play",
 	}
     removeTrash_bus = {
-        "Автобус по маршруту [(](.+)[)] отъезжает через %d+ секунд(.)",
+        "Автобус по маршруту %(.+%) отъезжает через %d+ секунд.",
 	}
     removeTrash_inkas = {
-        "В городе (.+) начал работу новый инкассатор[!]",
-        "Убив его[,] вы сможете получить деньги[!]"
+        "В городе .+ начал работу новый инкассатор%!",
+        "Убив его, вы сможете получить деньги%!"
 	}
     addEventHandler("onReceiveRpc", function(id, bs)
         if id == 93 and removeTrash_enable.v then
             color = raknetBitStreamReadInt32(bs)
             count = raknetBitStreamReadInt32(bs)
-            text = tostring(raknetBitStreamReadString(bs, count))
+			text = raknetBitStreamReadString(bs, count)
             if removeTrash_space_status.v then
                 if text == " " then return false end
 			end
@@ -802,14 +812,14 @@ function removeTrash()
                 if tostring(color) == "73381119" then return false end
 			end
             if removeTrash_prison_status.v then
-                if tostring(text):match("Игрок (.+) вышел при попытке избежать ареста и был наказан[!]") then return false end
+                if text:match("Игрок .+ вышел при попытке избежать ареста и был наказан%!") then return false end
 			end
 		end
         if id == 61 and removeTrash_bonus_status.v then
             local id = raknetBitStreamReadInt16(bs)
             local style = raknetBitStreamReadInt8(bs)
             local tl = raknetBitStreamReadInt8(bs)
-            local t = tostring(raknetBitStreamReadString(bs,tl))
+			local t = raknetBitStreamReadString(bs,tl)
             for i = 1, #removeTrash_bonus do
                 if t:match(removeTrash_bonus[i]) then return false end
 			end
@@ -818,7 +828,7 @@ function removeTrash()
 	while true do wait(0)
 		if removeTrash_clearChatAfterConnect.v and removeTrash_enable.v then
 			local chatstring = sampGetChatString(99)
-			if chatstring:match("Connected to [{]B9C9BF[}](.+)") then
+			if chatstring:match("Connected to {B9C9BF}.+") then
 				for i = 1, 20, 1 do
 					sampAddChatMessage(" ",-1)
 				end
@@ -846,21 +856,23 @@ function fastReport()
 		if id == 50 and fastReport_state.v then
 			local lenght = raknetBitStreamReadInt32(bs)
 			local text = tostring(raknetBitStreamReadString(bs,lenght))
-			if text:match("[/]report%s") or text == "/report" then
+			if text:match("/report%s") or text == "/report" then
                 local str = text:sub(9, text:len())
-                if str:len() > 5 then
-                    report = tostring(str)
-                    run = true
-                    lua_thread.create(function()
-                        wait(5000)
-                        run = false
-					end)
-                    elseif str:len() == 0 then
-                    sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Используйте /report [текст]",-1)
-                    return false
-                    else
-                    sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Сообщение должно быть больше 6 символов",-1)
-                    return false
+                if str ~= null then
+					if str:len() > 5 then
+						report = str
+						run = true
+						lua_thread.create(function()
+							wait(5000)
+							run = false
+						end)
+						elseif str:len() == 0 then
+						sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Используйте /report [текст]",-1)
+						return false
+						else
+						sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Сообщение должно быть больше 6 символов",-1)
+						return false
+					end
 				end
 			end
 		end
@@ -876,7 +888,7 @@ function fastReport()
 			local b2l = raknetBitStreamReadInt8(bs)
 			local b2 = raknetBitStreamReadString(bs,b2l)
 			local text = raknetBitStreamDecodeString(bs,4096)
-			if tostring(text):match("[{]ffffff[]}]Вы собираетесь написать сообщение Администрации") and run then
+			if tostring(text):match("{ffffff}Вы собираетесь написать сообщение Администрации") and run then
 				if report:len() > 5 then
 					sampSendDialogResponse(id,1,1,report)
                     report = ""
@@ -896,7 +908,7 @@ function carkey()
             color = raknetBitStreamReadInt32(bs)
             count = raknetBitStreamReadInt32(bs)
             text = tostring(raknetBitStreamReadString(bs, count))
-            if tostring(text):match("Необходимо вставить ключи в зажигание(.) Используйте[:] (.)[/]key(.)") then
+            if tostring(text):match("Необходимо вставить ключи в зажигание. Используйте: ./key.") then
                 lua_thread.create(function()
                     wait(300)
                     sampSendChat("/key")
@@ -907,7 +919,7 @@ function carkey()
 				end)
                 return false
 			end
-            if text:match("заглушил[(]а[)] двигатель") then
+            if text:match("заглушил%(а%) двигатель") then
                 local _, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
                 local nick = sampGetPlayerNickname(id)
                 if text:match(tostring(nick)) and _ and tostring(nick):len() > 0 then
@@ -920,7 +932,7 @@ function carkey()
 					end)
 				end
 			end
-            if text:match("вытащил[(]а[)] ключи из замка зажигания") and run then
+            if text:match("вытащил%(а%) ключи из замка зажигания") and run then
                 run = false
 			end
             if text:match("Вы не в своем авто") and run then
@@ -945,13 +957,13 @@ function autopin()
 			local b2l = raknetBitStreamReadInt8(bs)
 			local b2 = raknetBitStreamReadString(bs,b2l)
 			local text = raknetBitStreamDecodeString(bs,4096)
-			if tostring(text):match("[{]929290[}]Вы должны подтвердить свой PIN(.)код к") then
+			if text:match("{929290}Вы должны подтвердить свой PIN.+код") then
                 sampSendDialogResponse(id,1,1,autopin_pin.v)
                 return false
 			end
-            if tostring(text):match("PIN[-]код принят") then
+            if text:match("PIN%-код принят") then
                 sampSendDialogResponse(id,1,1,"")
-                sampAddChatMessage("{c41e3a}[Helper]: {ffffff}PIN-код принят",-1)
+                sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}PIN-код принят",-1)
                 lua_thread.create(function()
                     wait(250)
                     setVirtualKeyDown(0x4E, true)
@@ -966,13 +978,15 @@ function autopin()
 end
 function chatFix()
     while true do wait(0)
-		if isKeyJustPressed(0x54 --[[VK_T]]) and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() then
+		if isKeyJustPressed(0x54) and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() then
 			sampSetChatInputEnabled(true)
 		end
 	end
 end
 function fixCrosshair()
-    memory.write(0x058E280, 0xEB, 1, true)
+    while true do wait(0)
+		memory.write(0x058E280, 0xEB, 1, true)
+	end
 end
 function clearChat()
     addEventHandler("onSendRpc", function(id,bs)
@@ -987,6 +1001,7 @@ function clearChat()
 			end
 		end
 	end)
+	while true do wait(0) end
 end
 function fAndSpaceFix()
     while true do wait(0)
@@ -1015,6 +1030,7 @@ function altEnter()
     addEventHandler("onWindowMessage", function (msg, wparam, lparam)
         if msg == 261 and wparam == 13 then consumeWindowMessage(true, true) end
 	end)
+	while true do wait(0) end
 end
 function showTextDraws()
     local state = false
@@ -1124,12 +1140,12 @@ function getGuns()
                             ammo_fill = false
                             m4 = false
                             _ = false
-                            sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Оружие не найдено",-1)
+                            sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Оружие не найдено",-1)
                             wait(100)
                             sampSendClickTextdraw(65535)
 						end
 					end)
-					else sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Введите от 1 до 500 патронов",-1)
+					else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Введите от 1 до 500 патронов",-1)
 				end
                 return false
 			end
@@ -1146,12 +1162,12 @@ function getGuns()
                             ammo_fill = false
                             rifle = false
                             _ = false
-                            sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Оружие не найдено",-1)
+                            sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Оружие не найдено",-1)
                             wait(100)
                             sampSendClickTextdraw(65535)
 						end
 					end)
-					else sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Введите от 1 до 500 патронов",-1)
+					else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Введите от 1 до 500 патронов",-1)
 				end
                 return false
 			end
@@ -1168,12 +1184,12 @@ function getGuns()
                             ammo_fill = false
                             deagle = false
                             _ = false
-                            sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Оружие не найдено",-1)
+                            sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Оружие не найдено",-1)
                             wait(100)
                             sampSendClickTextdraw(65535)
 						end
 					end)
-					else sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Введите от 1 до 500 патронов",-1)
+					else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Введите от 1 до 500 патронов",-1)
 				end
                 return false
 			end
@@ -1190,12 +1206,12 @@ function getGuns()
                             ammo_fill = false
                             shotgun = false
                             _ = false
-                            sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Оружие не найдено",-1)
+                            sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Оружие не найдено",-1)
                             wait(100)
                             sampSendClickTextdraw(65535)
 						end
 					end)
-					else sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Введите от 1 до 500 патронов",-1)
+					else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Введите от 1 до 500 патронов",-1)
 				end
                 return false
 			end
@@ -1212,12 +1228,12 @@ function getGuns()
                             ammo_fill = false
                             ak = false
                             _ = false
-                            sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Оружие не найдено",-1)
+                            sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Оружие не найдено",-1)
                             wait(100)
                             sampSendClickTextdraw(65535)
 						end
 					end)
-					else sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Введите от 1 до 500 патронов",-1)
+					else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Введите от 1 до 500 патронов",-1)
 				end
                 return false
 			end
@@ -1234,7 +1250,7 @@ function getGuns()
 			local b2l = raknetBitStreamReadInt8(bs)
 			local b2 = raknetBitStreamReadString(bs,b2l)
 			local text = raknetBitStreamDecodeString(bs,4096)
-            if text:match("[{]FFFFFF[}]Введите количество[,] которое хотите использовать") and ammo_fill then
+            if text:match("{FFFFFF}Введите количество, которое хотите использовать") and ammo_fill then
                 lua_thread.create(function()
 					wait(50)
 					sampSendDialogResponse(did,1,0,getGuns_ammo)
@@ -1247,7 +1263,7 @@ function getGuns()
             color = raknetBitStreamReadInt32(bs)
             textl = raknetBitStreamReadInt32(bs)
             text = raknetBitStreamReadString(bs, textl)
-            if tostring(text):match("(.)Ошибка(.) [{]FFFFFF[}]У вас в наличии только %d+ шт") and ammo_fill then
+            if tostring(text):match("%[Ошибка%] {FFFFFF}У вас в наличии только %d+ шт") and ammo_fill then
                 lua_thread.create(function()
                     wait(10)
                     ammo_fill = false
@@ -1407,6 +1423,7 @@ function resendVr()
 			end
 		end
 	end)
+	while true do wait(0) end
 end
 function antiCarSkill()
     antiCarSkill_state = imgui.ImBool(mainIni.settings.antiCarSkill_state_c)
@@ -1640,7 +1657,7 @@ function offDesc()
             local b = raknetBitStreamReadInt8(bs)
             local playerId = raknetBitStreamReadInt16(bs)
             local vehId = raknetBitStreamReadInt16(bs)
-            local text = tostring(raknetBitStreamDecodeString(bs,4096))
+			local text = raknetBitStreamDecodeString(bs,4096)
             if playerId < 1001 and labelColor == -858993409 then
                 return false
 			end
@@ -1661,7 +1678,7 @@ function offFam()
             local b = raknetBitStreamReadInt8(bs)
             local playerId = raknetBitStreamReadInt16(bs)
             local vehId = raknetBitStreamReadInt16(bs)
-            local text = tostring(raknetBitStreamDecodeString(bs,4096))
+            local text = raknetBitStreamDecodeString(bs,4096)
             if playerId < 1001 and labelColor == 8421631 then
                 return false
 			end
@@ -1883,9 +1900,11 @@ function megafon()
     while true do wait(0)
         if isKeyJustPressed(0x4D) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() and megafon_state.v then
             local bool, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-            local nickname = sampGetPlayerNickname(id)
-            nickname = nickname:gsub("_", " ")
-			sampSendChat("/m Говорит сотрудник полиции "..nickname..", немедленно остановитесь!")
+            if bool then
+				local nickname = sampGetPlayerNickname(id)
+				nickname = nickname:gsub("_", " ")
+				sampSendChat("/m Говорит сотрудник полиции "..nickname..", немедленно остановитесь!")
+			end
 		end
 	end
 end
@@ -1894,7 +1913,7 @@ function autoMiranda()
     addEventHandler("onSendRpc", function(id,bs)
 		if id == 50 and autoMiranda_state.v then
 			local lenght = raknetBitStreamReadInt32(bs)
-			local text = tostring(raknetBitStreamReadString(bs,lenght))
+			local text = raknetBitStreamReadString(bs,lenght)
             if text == "/rights" then
                 lua_thread.create(function()
                     wait(1000)
@@ -1920,73 +1939,73 @@ function autoRP()
 		if id == 50 and autoRP_state.v then
 			local lenght = raknetBitStreamReadInt32(bs)
 			local text = tostring(raknetBitStreamReadString(bs,lenght))
-            if text:match ("^[/]frisk%s") then
+            if text:match ("^/frisk%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me надел перчатки и произвел обыск нарушителя")
 				end)
 			end
-            if text:match ("^[/]cuff%s") then
+            if text:match ("^/cuff%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me снял наручники с пояса и надел их на нарушителя")
 				end)
 			end
-            if text:match ("^[/]uncuff%s") then
+            if text:match ("^/uncuff%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me растягнул нарушителя и убрал наручники")
 				end)
 			end
-            if text:match ("^[/]unmask%s") then
+            if text:match ("^/unmask%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me стащил маску с нарушителя")
 				end)
 			end
-            if text:match ("^[/]pull%s") then
+            if text:match ("^/pull%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me выбил окно автомобиля и силой вытащил нарушителя из него")
 				end)
 			end
-            if text:match ("^[/]incar%s") then
+            if text:match ("^/incar%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me открыл дверь патрульного автомобиля и затащил в него нарушителя")
 				end)
 			end
-            if text:match ("^[/]ticket%s") then
+            if text:match ("^/ticket%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me достал пустые тикеты, заполнил штраф и передал его нарушителю")
 				end)
 			end
-            if text:match ("^[/]arrest") then
+            if text:match ("^/arrest") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/do Из департамента вышли офицеры и забрали нарушителя")
 				end)
 			end
-            if text:match ("^[/]gotome%s") then
+            if text:match ("^/gotome%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me скрутил руки подозреваемому и потащил его за собой")
 				end)
 			end
-            if text:match ("^[/]ungotome%s") then
+            if text:match ("^/ungotome%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me отпустил подозреваемого")
 				end)
 			end
-			if text:match ("^[/]clear%s") then
+			if text:match ("^/clear%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me зашел в базу данных полиции штата и снял все обвинения")
 				end)
 			end
-            if text:match ("^[/]su%s") then
+            if text:match ("^/su%s") then
                 lua_thread.create(function()
                     wait(1000)
                     sampSendChat("/me передал приметы нарушителя по рации")
@@ -2018,7 +2037,7 @@ function requireSu()
             color = raknetBitStreamReadInt32(bs)
             textl = raknetBitStreamReadInt32(bs)
             text = raknetBitStreamReadString(bs, textl)
-            if tostring(text):match("(.)Ошибка(.) [{]FFFFFF[}]Подавать в розыск доступно с 5 ранга[!]") then
+            if text:match("%[Ошибка%] {FFFFFF}Подавать в розыск доступно с 5 ранга%!") then
                 if id ~= "" and k ~= "" and p ~= "" then
                     lua_thread.create(function()
                         wait(2000)
@@ -2048,18 +2067,12 @@ function nearWanted()
             color = raknetBitStreamReadInt32(bs)
             textl = raknetBitStreamReadInt32(bs)
             text = raknetBitStreamReadString(bs, textl)
-            if tostring(text):match("(.)Ошибка(.) [{]FFFFFF[}]Игроков с таким уровнем розыска нету[!]") and _ then
+            if text:match("%[Ошибка%] {FFFFFF}Игроков с таким уровнем розыска нету%!") and _ then
                 return false
 			end
-            if tostring(text):match("был[(]а[)] объявлен[(]a[)] в розыск[!]") then
-                lua_thread.create(function()
-                    local nickname = text:match("[}]%w+[_]%w+[(]")
-					nickname = nickname:sub(2, nickname:len() - 1)
-					local id = text:match("[}]%d+[{]")
-					id = id:sub(2, id:len() - 1)
-					local w = nickname.." ["..id.."]"
-                    table.insert(nearWanted_list, w)
-				end)
+            if text:match("был%(а%) объявлен%(a%) в розыск%!") then
+                local nickname, pid = text:match("Внимание%! {FFFFFF}(.+)%[(%d+)%]{FF6347} был%(а%) объявлен%(a%)")
+				table.insert(nearWanted_list, nickname.." ["..pid.."]")
 			end
 		end
 		if id == 61 and nearWanted_state.v and _ then
@@ -2072,43 +2085,42 @@ function nearWanted()
 			local b2l = raknetBitStreamReadInt8(bs)
 			local b2 = raknetBitStreamReadString(bs,b2l)
 			local text = raknetBitStreamDecodeString(bs,4096)
-            if text:match("Ник") and text:match("[{]58F865[}]Уровень розыска[{]FFFFFF[}]") then
+            if text:match("Ник") and text:match("{58F865}Уровень розыска{FFFFFF}") then
                 local t = stringSplit(text, "\n")
                 for i = 2, #t do
-					local nickname = t[i]:match("[}]%w+[_]%w+[(]")
-					nickname = nickname:sub(2, nickname:len() - 1)
-					local id = t[i]:match("[}]%d+[{]")
-					id = id:sub(2, id:len() - 1)
-					local w = nickname.." ["..id.."]"
-                    table.insert(list, w)
+					local nickname, pid = t[i]:match("{FFFFFF}(.+)%({21FF11}(%d+){FFFFFF}%)")
+					table.insert(list, nickname.." ["..pid.."]")
 				end
                 return false
 			end
 		end
 	end)
-	if nearWanted_state.v then
-		list = {}
-		_ = true
-		if nearWanted_state.v then sampSendChat("/wanted 1") end
-		if nearWanted_state.v then wait(1000) end
-		if nearWanted_state.v then sampSendChat("/wanted 2") end
-		if nearWanted_state.v then wait(1000) end
-		if nearWanted_state.v then sampSendChat("/wanted 3") end
-		if nearWanted_state.v then wait(1000) end
-		if nearWanted_state.v then sampSendChat("/wanted 4") end
-		if nearWanted_state.v then wait(1000) end
-		if nearWanted_state.v then sampSendChat("/wanted 5") end
-		if nearWanted_state.v then wait(1000) end
-		if nearWanted_state.v then sampSendChat("/wanted 6") end
-		if nearWanted_state.v then wait(1000) end
-		_ = false
-		nearWanted_list = {}
-		for i = 1, #list do
-			table.insert(nearWanted_list, list[i])
-		end
-		for i = 0, 120, 1 do
-			wait(1000)
-			if not nearWanted_state.v then break end
+	while true do wait(0)
+		if nearWanted_state.v then
+			list = {}
+			_ = true
+			if nearWanted_state.v then sampSendChat("/wanted 1") end
+			if nearWanted_state.v then wait(1000) end
+			if nearWanted_state.v then sampSendChat("/wanted 2") end
+			if nearWanted_state.v then wait(1000) end
+			if nearWanted_state.v then sampSendChat("/wanted 3") end
+			if nearWanted_state.v then wait(1000) end
+			if nearWanted_state.v then sampSendChat("/wanted 4") end
+			if nearWanted_state.v then wait(1000) end
+			if nearWanted_state.v then sampSendChat("/wanted 5") end
+			if nearWanted_state.v then wait(1000) end
+			if nearWanted_state.v then sampSendChat("/wanted 6") end
+			if nearWanted_state.v then wait(1000) end
+			_ = false
+			nearWanted_list = {}
+			for i = 1, #list do
+				table.insert(nearWanted_list, list[i])
+			end
+			for i = 0, 120, 1 do
+				wait(0)
+				if not nearWanted_state.v then break end
+				if nearWanted_state.v then wait(1000) end
+			end
 		end
 	end
 end
@@ -2229,7 +2241,7 @@ function autoSport()
             color = raknetBitStreamReadInt32(bs)
             textl = raknetBitStreamReadInt32(bs)
             text = raknetBitStreamReadString(bs, textl)
-            if tostring(text):match("%[Ошибка%] {FFFFFF}Изменить стиль езды можно только если у вас установлены технические модификации или на полицейских авто!") then
+            if tostring(text):match("%[Ошибка%] {FFFFFF}Изменить стиль езды можно только если у вас установлены технические модификации или на полицейских авто%!") then
                 return false
 			end
 		end
@@ -2241,21 +2253,21 @@ function moneySeparate()
     function comma_value(n)
         local left,num,right = string.match(n,'^([^%d]*%d)(%d*)(.-)$')
         return left..(num:reverse():gsub('(%d%d%d)','%1,'):reverse())..right
-    end
+	end
     function separator(text)
         if text:find("$") then
             for S in string.gmatch(text, "%$%d+") do
                 local replace = comma_value(S)
                 text = string.gsub(text, S, replace)
-            end
+			end
             for S in string.gmatch(text, "%d+%$") do
                 S = string.sub(S, 0, #S-1)
                 local replace = comma_value(S)
                 text = string.gsub(text, S, replace)
-            end
-        end
+			end
+		end
         return text
-    end
+	end
     addEventHandler("onReceiveRpc",function(id, bs)
 		if id == 61 and moneySeparate_state.v then
 			local did = raknetBitStreamReadInt16(bs)
@@ -2281,7 +2293,7 @@ function moneySeparate()
             raknetBitStreamWriteString(bs,tostring(b2))
             raknetBitStreamEncodeString(bs,tostring(text))
             return true, id, bs
-        end
+		end
 	end)
     while true do wait(0) end
 end
@@ -2398,7 +2410,7 @@ function autoupdate(json_url, prefix, url)
                                     function(id3, status1, p13, p23)
                                         if status1 == dlstatus.STATUS_DOWNLOADINGDATA then
                                             elseif status1 == dlstatus.STATUS_ENDDOWNLOADDATA then
-                                            sampAddChatMessage("{c41e3a}[Helper]: {ffffff}Обновление прошло успешно на версию "..updateversion,-1)
+                                            sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Обновление прошло успешно на версию "..updateversion,-1)
                                             goupdatestatus = true
                                             lua_thread.create(function() wait(500) thisScript():reload() end)
 										end
@@ -2422,4 +2434,4 @@ function autoupdate(json_url, prefix, url)
 		end
 	)
     while update ~= false do wait(100) end
-	end			
+end			
