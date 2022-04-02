@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6")
+script_version("1.6.1")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -1574,7 +1574,7 @@ function gQuest()
 		if id == 50 then
 			local lenght = raknetBitStreamReadInt32(bs)
 			local text = tostring(raknetBitStreamReadString(bs,lenght))
-			if text == ("/gquest") then
+			if text == ("/gquest") and not isCharInAnyCar(PLAYER_PED) then
                 _ = true
                 lua_thread.create(function()
                     wait(2000)
