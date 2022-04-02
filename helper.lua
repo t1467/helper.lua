@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.5")
+script_version("1.5.1")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -2981,8 +2981,8 @@ function autoPiar()
 				return false
 			end
 			if style == 5 and t:match("{BFBBBA}Подача объявления") then
-				if autoPiar_ad_vip.v then sampSendDialogResponse(did, 1, 2, "")
-				else sampSendDialogResponse(did, 1, 1, "") end
+				if autoPiar_ad_vip.v then sampSendDialogResponse(did, 1, 1, "")
+				else sampSendDialogResponse(did, 1, 0, "") end
 				return false
 			end
 		end
