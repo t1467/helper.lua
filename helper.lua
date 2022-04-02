@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.5.2")
+script_version("1.6")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -90,7 +90,13 @@ local mainIni = inicfg.load({
 		autoMiranda_state_c = false,
 		autoRP_state_c = false,
 		requireSu_state_c = false,
-	}
+	},
+	insurance = {
+		catch_state_c = false,
+		NY_state_c = false,
+		fill_state_c = false,
+		anim_state_c = false,
+	},
 },"unknown.ini")
 cursorActive = false
 playerLock = false
@@ -101,6 +107,7 @@ removeTrash_window = false
 setTime_window = false
 police_window = false
 autoPiar_window = false
+insurance_window = false
 function closeAllWindow()
 	settings_window = false
 	afk_window = false
@@ -108,6 +115,7 @@ function closeAllWindow()
 	setTime_window = false
 	police_window = false
 	autoPiar_window = false
+	insurance_window = false
 end
 function imgui.OnDrawFrame()
 	if main_window then
@@ -128,6 +136,7 @@ function imgui.OnDrawFrame()
 		if imgui.CollapsingHeader(u8"Организации") then
 			if imgui.Button(u8">> Для собеседований <<", imgui.ImVec2(-1,20)) then sobes_state.v = not sobes_state.v end
 			if imgui.Button(u8"Полиция", imgui.ImVec2(-1,20)) then closeAllWindow() police_window = true end
+			if imgui.Button(u8"Страховая", imgui.ImVec2(-1,20)) then closeAllWindow() insurance_window = true end
 		end
 		imgui.EndChild()
 		imgui.SameLine(290)
@@ -222,6 +231,12 @@ function imgui.OnDrawFrame()
 			imgui.Checkbox(u8"Зачитать права /rights", autoMiranda_state)
 			imgui.Checkbox(u8"Тазер на X", taser_state)
 			imgui.Checkbox(u8"Кричать в мегафон на M", megafon_state)
+		end
+		if insurance_window then
+			imgui.Checkbox(u8"Ловец заявлений", insuranceCatch_state)
+			imgui.Checkbox(u8"Авто N/Y", insuranceNY_state)
+			imgui.Checkbox(u8"Авто заполнение", insuranceFill_state)
+			imgui.Checkbox(u8"Отключение анимации документов", insuranceRemoveAnim_state)
 		end
 		imgui.EndChild()
 		imgui.End()
@@ -438,6 +453,10 @@ function main()
 	lua_thread.create(traffic_stop)
 	lua_thread.create(patrol)
 	lua_thread.create(autoPiar)
+	lua_thread.create(insuranceCatch)
+	lua_thread.create(insuranceNY)
+	lua_thread.create(insuranceFill)
+	lua_thread.create(insuranceRemoveAnim)
 	lua_thread.create(function()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
@@ -811,6 +830,7 @@ function removeTrash()
 		"%[Информация%] Автомобиль работает с перебоями, скорость снижена, машина может сломаться%!",
 		"Необходимо заехать на станцию тех. обслуживания%! %(%(Используйте /gps важные места %- станция тех. обслуживания%)%)",
 		"%[Подсказка%] Чтобы подавать объявление из любого места, купите улучшение персонажа: /mm > Действия персонажа > Улучшения > Планшет",
+		"Чтобы узнать на каком этапе находится рассмотрение и понять что нужно делать %- {ffffff}используйте команду /insurhelp",
 	}
     removeTrash_ad = {
         "%- Наш сайт: arizona%-rp.com %(Личный кабинет/Донат%)",
@@ -1026,12 +1046,8 @@ function carkey()
             text = tostring(raknetBitStreamReadString(bs, count))
             if tostring(text):match("Необходимо вставить ключи в зажигание. Используйте: ./key.") then
                 lua_thread.create(function()
-                    wait(300)
+                    wait(100)
                     sampSendChat("/key")
-                    wait(250)
-                    setVirtualKeyDown(0x4E, true)
-                    wait(250)
-                    setVirtualKeyDown(0x4E, false)
 				end)
                 return false
 			end
@@ -1041,7 +1057,7 @@ function carkey()
 					local nick = sampGetPlayerNickname(id)
 					if text:match(tostring(nick)) and tostring(nick):len() > 0 then
 						lua_thread.create(function()
-							wait(300)
+							wait(100)
 							sampSendChat("/key")
 							run = true
 							wait(3000)
@@ -3048,6 +3064,243 @@ function autoPiar()
 		end
 	end
 end
+function insuranceCatch()
+	insuranceCatch_state = imgui.ImBool(mainIni.insurance.catch_state_c)
+	local finded = false
+	addEventHandler("onReceiveRpc", function(id, bs)
+        if id == 93 and insuranceCatch_state.v then
+            color = raknetBitStreamReadInt32(bs)
+            textl = raknetBitStreamReadInt32(bs)
+            text = raknetBitStreamReadString(bs, textl)
+            if text:match(".+ подал заявление на страхование имущества, номер заявления:") then
+				local inArea = isCharInArea3d(PLAYER_PED, 1522.6199, 1614.5894, 8.5453, 1519.6072, 1617.7963, 12.2203, false)
+				if inArea then
+					finded = true
+					lua_thread.create(function()
+						wait(3000)
+						finded = false
+					end)
+					local health = getCharHealth(PLAYER_PED)
+					local armour = getCharArmour(PLAYER_PED)
+					local wep = getCurrentCharWeapon(PLAYER_PED)
+					bs = raknetNewBitStream()
+					raknetBitStreamWriteInt8(bs,207)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,1024)
+					raknetBitStreamWriteFloat(bs,1520.5830)
+					raknetBitStreamWriteFloat(bs,1616.3347)
+					raknetBitStreamWriteFloat(bs,10.8703)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteInt8(bs,health)
+					raknetBitStreamWriteInt8(bs,armour)
+					raknetBitStreamWriteInt8(bs,wep)
+					raknetBitStreamWriteInt8(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,1189)
+					raknetBitStreamWriteInt16(bs,32772)
+					raknetSendBitStream(bs)
+					raknetDeleteBitStream(bs)
+				else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы слишком далеко от принятия заявлений",-1) end
+			end
+		end
+		if id == 61 and insuranceCatch_state.v and finded then
+			local did = raknetBitStreamReadInt16(bs)
+			local style = raknetBitStreamReadInt8(bs)
+			local tl = raknetBitStreamReadInt8(bs)
+			local t = raknetBitStreamReadString(bs,tl)
+			local b1l = raknetBitStreamReadInt8(bs)
+			local b1 = raknetBitStreamReadString(bs,b1l)
+			local b2l = raknetBitStreamReadInt8(bs)
+			local b2 = raknetBitStreamReadString(bs,b2l)
+			local text = raknetBitStreamDecodeString(bs,4096)
+            if t == "{BFBBBA}Заявки на страхование (1/1)" then
+				text = stringSplit(text, "\n")
+				for i = 2, #text do
+					if not text[i]:match("{cccccc}| в работе: .+") then sampSendDialogResponse(did, 1, i-2, "") break end
+				end
+				return false
+			end
+			if t:match("{BFBBBA}Заявление") and text:match("{ffffff}Заявление {ffff00}.+{ffffff}от {ffff00}.+") then
+				sampSendDialogResponse(did, 1, 0, "")
+				finded = false
+				lua_thread.create(function()
+					wait(100)
+					sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы взяли заявление",-1)
+				end)
+				return false
+			end
+		end
+	end)
+	while true do wait(0) end
+end
+function insuranceNY()
+	insuranceNY_state = imgui.ImBool(mainIni.insurance.NY_state_c)
+	while true do wait(50)
+		if sampTextdrawIsExists(2062) and insuranceNY_state.v then
+			local inArea2 = isCharInArea3d(PLAYER_PED, 1524.0441, 1613.4524, 9.2203, 1526.7075, 1616.5979, 11.6203, false)
+			local inArea1 = isCharInArea3d(PLAYER_PED, 1516.5701, 1613.4512, 9.1453, 1518.8618, 1616.6068, 11.2453, false)
+			if inArea1 or inArea2 then
+				if sampTextdrawGetString(2062) == "Press_Y" then
+					local health = getCharHealth(PLAYER_PED)
+					local armour = getCharArmour(PLAYER_PED)
+					local wep = getCurrentCharWeapon(PLAYER_PED)
+					local x, y, z = getCharCoordinates(PLAYER_PED)
+					bs = raknetNewBitStream()
+					raknetBitStreamWriteInt8(bs,207)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteFloat(bs,x)
+					raknetBitStreamWriteFloat(bs,y)
+					raknetBitStreamWriteFloat(bs,z)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteInt8(bs,health)
+					raknetBitStreamWriteInt8(bs,armour)
+					raknetBitStreamWriteInt8(bs,wep + 64)
+					raknetBitStreamWriteInt8(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,1189)
+					raknetBitStreamWriteInt16(bs,32772)
+					raknetSendBitStream(bs)
+					raknetDeleteBitStream(bs)
+					lua_thread.create(function()
+						wait(200)
+						sampSendClickTextdraw(65535)
+					end)
+				end
+				if sampTextdrawGetString(2062) == "Press_N" then
+					local health = getCharHealth(PLAYER_PED)
+					local armour = getCharArmour(PLAYER_PED)
+					local wep = getCurrentCharWeapon(PLAYER_PED)
+					local x, y, z = getCharCoordinates(PLAYER_PED)
+					bs = raknetNewBitStream()
+					raknetBitStreamWriteInt8(bs,207)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteFloat(bs,x)
+					raknetBitStreamWriteFloat(bs,y)
+					raknetBitStreamWriteFloat(bs,z)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteInt8(bs,health)
+					raknetBitStreamWriteInt8(bs,armour)
+					raknetBitStreamWriteInt8(bs,wep + 128)
+					raknetBitStreamWriteInt8(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteFloat(bs,0)
+					raknetBitStreamWriteInt16(bs,0)
+					raknetBitStreamWriteInt16(bs,1189)
+					raknetBitStreamWriteInt16(bs,32772)
+					raknetSendBitStream(bs)
+					raknetDeleteBitStream(bs)
+					lua_thread.create(function()
+						wait(200)
+						sampSendClickTextdraw(65535)
+					end)
+				end
+			end
+		end
+	end
+end
+function insuranceFill()
+	insuranceFill_state = imgui.ImBool(mainIni.insurance.fill_state_c)
+	addEventHandler("onReceiveRpc", function(id,bs)
+		if id == 134 and insuranceFill_state.v then
+            local tid = raknetBitStreamReadInt16(bs)
+            local flags = raknetBitStreamReadInt8(bs)
+            local letterW = raknetBitStreamReadFloat(bs)
+            local letterH = raknetBitStreamReadFloat(bs)
+            local letterColor = raknetBitStreamReadInt32(bs)
+            local lineW = raknetBitStreamReadFloat(bs)
+            local lineH = raknetBitStreamReadFloat(bs)
+            local boxColor = raknetBitStreamReadInt32(bs)
+            local shadow = raknetBitStreamReadInt8(bs)
+            local outline = raknetBitStreamReadInt8(bs)
+            local backgroundColor = raknetBitStreamReadInt32(bs)
+            local style = raknetBitStreamReadInt8(bs)
+            local selectable = raknetBitStreamReadInt8(bs)
+            local X = raknetBitStreamReadFloat(bs)
+            local Y = raknetBitStreamReadFloat(bs)
+            local model = raknetBitStreamReadInt16(bs)
+            local rotX = raknetBitStreamReadFloat(bs)
+            local rotY = raknetBitStreamReadFloat(bs)
+            local rotZ = raknetBitStreamReadFloat(bs)
+            local zoom = raknetBitStreamReadFloat(bs)
+            local color1 = raknetBitStreamReadInt16(bs)
+            local color2 = raknetBitStreamReadInt16(bs)
+            local textLen = raknetBitStreamReadInt16(bs)
+            local text = raknetBitStreamReadString(bs, textLen)
+			if text == "ARZ_INSURANCE_COMPANY" then
+				lua_thread.create(function()
+					sampSendClickTextdraw(242)
+					wait(600)
+					sampSendClickTextdraw(243)
+					wait(600)
+					sampSendClickTextdraw(244)
+					wait(600)
+					sampSendClickTextdraw(245)
+				end)
+			end
+		end
+		if id == 61 and insuranceFill_state.v then
+			local id = raknetBitStreamReadInt16(bs)
+			local style = raknetBitStreamReadInt8(bs)
+			local tl = raknetBitStreamReadInt8(bs)
+			local t = raknetBitStreamReadString(bs,tl)
+			local b1l = raknetBitStreamReadInt8(bs)
+			local b1 = raknetBitStreamReadString(bs,b1l)
+			local b2l = raknetBitStreamReadInt8(bs)
+			local b2 = raknetBitStreamReadString(bs,b2l)
+			local text = raknetBitStreamDecodeString(bs,4096)
+			if t == "{BFBBBA}Заполнение документа" then
+				local request = text:match("{ffff00}(.+)")
+				sampSendDialogResponse(id, 1, 0, request)
+				return false
+			end
+		end
+	end)
+	while true do wait(0) end
+end
+function insuranceRemoveAnim()
+	insuranceRemoveAnim_state = imgui.ImBool(mainIni.insurance.anim_state_c)
+	addEventHandler("onReceiveRpc", function(id,bs)
+		if id == 86 and insuranceRemoveAnim_state.v then
+			local id = raknetBitStreamReadInt16(bs)
+			local animlibl = raknetBitStreamReadInt8(bs)
+			local animlib = raknetBitStreamReadString(bs,animlibl)
+			local animnamel = raknetBitStreamReadInt8(bs)
+			local animname = raknetBitStreamReadString(bs,animnamel)
+			if animname == "WASH_UP" then return false end
+		end
+	end)
+	while true do wait(0) end
+end
 function save()
 	local newData = {
 		settings = {
@@ -3128,7 +3381,13 @@ function save()
 			autoMiranda_state_c = autoMiranda_state.v,
 			autoRP_state_c = autoRP_state.v,
 			requireSu_state_c = requireSu_state.v,
-		}
+		},
+		insurance = {
+			catch_state_c = insuranceCatch_state.v,
+			NY_state_c = insuranceNY_state.v,
+			fill_state_c = insuranceFill_state.v,
+			anim_state_c = insuranceRemoveAnim_state.v,
+		},
 	}
 	inicfg.save(newData,"unknown.ini")
 end
