@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.5.1")
+script_version("1.5.2")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -3036,6 +3036,7 @@ function autoPiar()
 						autoPiar_state.v = false
 					end
 				end
+				sampCloseCurrentDialogWithButton(1)
 				_ = false
 			end)
 			autoPiar_timer = autoPiar_delay.v
