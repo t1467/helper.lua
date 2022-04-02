@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.4.5")
+script_version("1.5")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -73,6 +73,16 @@ local mainIni = inicfg.load({
 		time_c = 12,
 		weather_c = 1,
 	},
+	autoPiar = {
+		delay_c = 300,
+		text_c = "",
+		vr_c = false,
+		ad_c = false,
+		ad_vip_c = false,
+		j_c = false,
+		org_c = false,
+		selected_org = 0,
+	},
 	police = {
 		taser_state_c = false,
 		rpGuns_state_c = false,
@@ -90,12 +100,14 @@ afk_window = false
 removeTrash_window = false
 setTime_window = false
 police_window = false
+autoPiar_window = false
 function closeAllWindow()
 	settings_window = false
 	afk_window = false
 	removeTrash_window = false
 	setTime_window = false
 	police_window = false
+	autoPiar_window = false
 end
 function imgui.OnDrawFrame()
 	if main_window then
@@ -111,9 +123,10 @@ function imgui.OnDrawFrame()
 		if imgui.Button(u8"Настройки для АФК", imgui.ImVec2(-1,20)) then closeAllWindow() afk_window = true end
 		if imgui.Button(u8"Удаление мусора", imgui.ImVec2(-1,20)) then closeAllWindow() removeTrash_window = true end
 		if imgui.Button(u8"Время и погода", imgui.ImVec2(-1,20)) then closeAllWindow() setTime_window = true end
+		if imgui.Button(u8"Авто пиар", imgui.ImVec2(-1,20)) then closeAllWindow() autoPiar_window = true end
 		imgui.Text(u8"")
 		if imgui.CollapsingHeader(u8"Организации") then
-			if imgui.Button(u8">> Собеседование <<", imgui.ImVec2(-1,20)) then sobes_state.v = not sobes_state.v end
+			if imgui.Button(u8">> Для собеседований <<", imgui.ImVec2(-1,20)) then sobes_state.v = not sobes_state.v end
 			if imgui.Button(u8"Полиция", imgui.ImVec2(-1,20)) then closeAllWindow() police_window = true end
 		end
 		imgui.EndChild()
@@ -187,6 +200,18 @@ function imgui.OnDrawFrame()
 				imgui.InputInt(u8"Погода", setTime_weather, 1, 100)
 			end
 		end
+		if autoPiar_window then
+			imgui.Checkbox(u8"Включить", autoPiar_state)
+			if autoPiar_state.v then imgui.Text(u8"До следующего пиара "..u8(autoPiar_timer)..u8" секунд") end
+			if imgui.InputText(u8"Текст", autoPiar_text) then autoPiar_state.v = false end
+			if imgui.InputInt(u8"Задержка", autoPiar_delay) then autoPiar_state.v = false end
+			imgui.Checkbox(u8"Пиар в вип-чат", autoPiar_vr)
+			imgui.Checkbox(u8"Пиар в объявления", autoPiar_ad)
+			if autoPiar_ad.v then imgui.SameLine(150) imgui.Checkbox(u8"Вип-объявления", autoPiar_ad_vip) end
+			imgui.Checkbox(u8"Пиар в рабочий чат", autoPiar_j)
+			imgui.Checkbox(u8"Пиар в чат организации", autoPiar_org)
+			if autoPiar_org.v then imgui.Combo(u8'Организация', autoPiar_selected_org, {u8"Нелегал", u8"Гос"}, 2) end
+		end
 		if police_window then
 			imgui.Checkbox(u8"Поиск преступников в зоне стрима", nearWanted_state)
 			imgui.Checkbox(u8"Траффик-стоп хелпер", traffic_stop_state)
@@ -243,74 +268,37 @@ function imgui.OnDrawFrame()
 	end
 	if sobes_state.v then
         local x, y = getScreenResolution()
-        imgui.SetNextWindowPos(imgui.ImVec2(x / 2 - 100, y - 160), imgui.Cond.FirstUseEver)
-        imgui.SetNextWindowSize(imgui.ImVec2(200,150))
+        imgui.SetNextWindowPos(imgui.ImVec2(x / 2 - 100, y - 185), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(200,175))
         imgui.GetStyle().Colors[imgui.Col.WindowBg] = imgui.ImVec4(0, 0, 0, 1.00)
         imgui.Begin(u8'Собеседование', window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar)
-		if imgui.Button(u8"Приветствие", imgui.ImVec2(-1,20)) then sampSendChat("Здравствуйте, вы пришли на собеседование?") end
-		if imgui.Button(u8"Расскажите о себе", imgui.ImVec2(-1,20)) then sampSendChat("Отлично, расскажите немного о себе.") end
-		if imgui.Button(u8"Документы", imgui.ImVec2(-1,20)) then
-			lua_thread.create(function()
-				sampSendChat("Предъявите ваши документы: паспорт, медкарту и лицензии.")
-				wait(1000)
-				local _, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
-				if _ then sampSendChat("/b /showpass "..id..", /showmc "..id..", /showlic "..id) end
-			end)
-		end
-		if imgui.Button(u8"Посмотреть документы", imgui.ImVec2(-1,20)) then sampSendChat("/me внимательно изучил все предоставленные документы") end
-		if imgui.Button(u8"Приняты", imgui.ImVec2(90,20)) then
-			lua_thread.create(function()
-				sampSendChat("Отлично, вы приняты. Вот ваши ключи от шкафчика")
-				sampSetChatInputEnabled(true)
-				sampSetChatInputText("/invite ")
-				wait(1000)
-				sampSendChat("/me передал ключи от шкафчика")
-			end)
-		end
+		if imgui.Button(u8"Приветствие", imgui.ImVec2(-1,20)) then sobes_gofunc(1) end
+		if imgui.Button(u8"Расскажите о себе", imgui.ImVec2(-1,20)) then sobes_gofunc(2) end
+		if imgui.Button(u8"Почему выбрали нас", imgui.ImVec2(-1,20)) then sobes_gofunc(7) end
+		if imgui.Button(u8"Документы", imgui.ImVec2(-1,20)) then sobes_gofunc(3) end
+		if imgui.Button(u8"Посмотреть документы", imgui.ImVec2(-1,20)) then sobes_gofunc(4) end
+		if imgui.Button(u8"Приняты", imgui.ImVec2(90,20)) then sobes_gofunc(5) end
 		imgui.SameLine(100)
-		if imgui.Button(u8"Отказ", imgui.ImVec2(90,20)) then sampSendChat("Извините, но вы нам не подходите") end
+		if imgui.Button(u8"Отказ", imgui.ImVec2(90,20)) then sobes_gofunc(6) end
         imgui.End()
         theme()
-    end
+	end
 	if traffic_stop_state.v then
         local x, y = getScreenResolution()
         imgui.SetNextWindowPos(imgui.ImVec2(x / 2 - 100, y - 205), imgui.Cond.FirstUseEver)
         imgui.SetNextWindowSize(imgui.ImVec2(200,195))
         imgui.GetStyle().Colors[imgui.Col.WindowBg] = imgui.ImVec4(0, 0, 0, 1.00)
         imgui.Begin(u8'Траффик стоп', window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar)
-		if imgui.Button(u8"Прикаснуться к фаре", imgui.ImVec2(-1,20)) then
-			sampSendChat("/me подошел к авто, прикосунлся к задней фаре, пошел дальше")
-		end
-		if imgui.Button(u8"Приветствие", imgui.ImVec2(-1,20)) then
-			lua_thread.create(function()
-				local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-				if _ then
-				local nickname = sampGetPlayerNickname(pid)
-				nickname = nickname:gsub("_", " ")
-				sampSendChat("Здравствуйте, я сотрудник полиции "..nickname..".") end
-				sampSetChatInputEnabled(true)
-				sampSetChatInputText("/showbadge ")
-				wait(1000)
-				sampSendChat("Предъявите пожалуйста ваши документы.")
-			end)
-		end
-		if imgui.Button(u8"Изучить документы", imgui.ImVec2(-1,20)) then
-			sampSendChat("/me внимательно изучил все документы и передал их обратно")
-		end
+		if imgui.Button(u8"Прикаснуться к фаре", imgui.ImVec2(-1,20)) then traffic_stop_gofunc(1) end
+		if imgui.Button(u8"Приветствие", imgui.ImVec2(-1,20)) then traffic_stop_gofunc(2) end
+		if imgui.Button(u8"Изучить документы", imgui.ImVec2(-1,20)) then traffic_stop_gofunc(3) end
 		imgui.Text(u8"")
-		if imgui.Button(u8"Все хорошо", imgui.ImVec2(-1,20)) then
-			sampSendChat("Все в порядке, не смею вас больше задерживать.")
-		end
-		if imgui.Button(u8"Штраф", imgui.ImVec2(-1,20)) then
-			sampSetChatInputEnabled(true)
-			sampSetChatInputText("Мне придется выписать вам штраф за ")
-		end
-		if imgui.Button(u8"Попросить выйти из авто", imgui.ImVec2(-1,20)) then
-			sampSendChat("Отлично, не могли бы вы выйти из авто?")
-		end
+		if imgui.Button(u8"Все хорошо", imgui.ImVec2(-1,20)) then traffic_stop_gofunc(4) end
+		if imgui.Button(u8"Штраф", imgui.ImVec2(-1,20)) then traffic_stop_gofunc(5) end
+		if imgui.Button(u8"Попросить выйти из авто", imgui.ImVec2(-1,20)) then traffic_stop_gofunc(6) end
         imgui.End()
         theme()
-    end
+	end
 	if patrol_state.v then
         local xс, yс = getScreenResolution()
         imgui.SetNextWindowPos(imgui.ImVec2(xс / 2 - 125, yс - 210), imgui.Cond.FirstUseEver)
@@ -318,69 +306,15 @@ function imgui.OnDrawFrame()
         imgui.GetStyle().Colors[imgui.Col.WindowBg] = imgui.ImVec4(0, 0, 0, 1.00)
         imgui.Begin(u8'Патруль', window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar)
 		imgui.Combo(u8'Маркировка', patrol_selected, {"LINCOLN", "ADAM", "MARY", "AIR", "EDWARD"}, 5)
-		if imgui.Button(u8"Выехал в патруль", imgui.ImVec2(-1,20)) then
-			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-			if _ then
-				sampSendChat("/r Выехал в патруль как "..patrol_marker.v.."-"..pid..", код 4, доступен")
-			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
-		end
-		if imgui.Button(u8"Продолжаю патруль", imgui.ImVec2(-1,20)) then
-			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-			local x, y, z = getCharCoordinates(PLAYER_PED)
-			local nameZone = calculateZone(x, y, z)
-			if _ then
-				sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Продолжаю патрулирование, район: "..nameZone..", код 4, доступен")
-			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
-		end
-		if imgui.Button(u8"10-55", imgui.ImVec2(-1,20)) then
-			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-			local x, y, z = getCharCoordinates(PLAYER_PED)
-			local nameZone = calculateZone(x, y, z)
-			if _ then
-				sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Провожу траффик-стоп, район: "..nameZone..", код 4, недоступен")
-			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
-		end
-		if imgui.Button(u8"10-66", imgui.ImVec2(-1,20)) then
-			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-			local x, y, z = getCharCoordinates(PLAYER_PED)
-			local nameZone = calculateZone(x, y, z)
-			if _ then
-				lua_thread.create(function()
-					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Провожу траффик-стоп, район: "..nameZone..", код 4, недоступен")
-					wait(1000)
-					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Запрашиваю свободные юниты, район: "..nameZone..", код 2")
-					wait(1000)
-					sampSendChat("/bk 10-20")
-				end)
-			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
-		end
-		if imgui.Button(u8"Перестрелка", imgui.ImVec2(-1,20)) then
-			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-			local x, y, z = getCharCoordinates(PLAYER_PED)
-			local nameZone = calculateZone(x, y, z)
-			if _ then
-				lua_thread.create(function()
-					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Нахожусь в перестрелке, район: "..nameZone..", код 3, недоступен")
-					wait(1000)
-					sampSendChat("/bk 10-20")
-				end)
-			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
-		end
-		if imgui.Button(u8"Погоня", imgui.ImVec2(-1,20)) then
-			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
-			local x, y, z = getCharCoordinates(PLAYER_PED)
-			local nameZone = calculateZone(x, y, z)
-			if _ then
-				lua_thread.create(function()
-					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Начинаю погоню, нужна помощь, район: "..nameZone..", код 3, недоступен")
-					wait(1000)
-					sampSendChat("/rb /pursuit "..pid)
-				end)
-			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
-		end
+		if imgui.Button(u8"Выехал в патруль", imgui.ImVec2(-1,20)) then patrol_gofunc(1) end
+		if imgui.Button(u8"Продолжаю патруль", imgui.ImVec2(-1,20)) then patrol_gofunc(2) end
+		if imgui.Button(u8"10-55", imgui.ImVec2(-1,20)) then patrol_gofunc(3) end
+		if imgui.Button(u8"10-66", imgui.ImVec2(-1,20)) then patrol_gofunc(4) end
+		if imgui.Button(u8"Перестрелка", imgui.ImVec2(-1,20)) then patrol_gofunc(5) end
+		if imgui.Button(u8"Погоня", imgui.ImVec2(-1,20)) then patrol_gofunc(6) end
         imgui.End()
         theme()
-    end
+	end
 end
 function theme()
     imgui.SwitchContext()
@@ -503,6 +437,7 @@ function main()
 	lua_thread.create(sobes)
 	lua_thread.create(traffic_stop)
 	lua_thread.create(patrol)
+	lua_thread.create(autoPiar)
 	lua_thread.create(function()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
@@ -875,6 +810,7 @@ function removeTrash()
 		"%[Информация%] {FFFFFF}Состояние масла вашего авто крайне плохое%!",
 		"%[Информация%] Автомобиль работает с перебоями, скорость снижена, машина может сломаться%!",
 		"Необходимо заехать на станцию тех. обслуживания%! %(%(Используйте /gps важные места %- станция тех. обслуживания%)%)",
+		"%[Подсказка%] Чтобы подавать объявление из любого места, купите улучшение персонажа: /mm > Действия персонажа > Улучшения > Планшет",
 	}
     removeTrash_ad = {
         "%- Наш сайт: arizona%-rp.com %(Личный кабинет/Донат%)",
@@ -2500,16 +2436,128 @@ function moneySeparate()
 end
 function sobes()
 	sobes_state = imgui.ImBool(false)
+	function sobes_gofunc(arg)
+		if arg == 1 then
+			sampSendChat("Здравствуйте, вы пришли на собеседование?")
+			elseif arg == 2 then
+			sampSendChat("Отлично, расскажите немного о себе.")
+			elseif arg == 3 then
+			lua_thread.create(function()
+				sampSendChat("Предъявите ваши документы: паспорт, медкарту и лицензии.")
+				wait(1000)
+				local _, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+				if _ then sampSendChat("/b /showpass "..id..", /showmc "..id..", /showlic "..id) end
+			end)
+			elseif arg == 4 then
+			sampSendChat("/me внимательно изучил все предоставленные документы")
+			elseif arg == 5 then
+			lua_thread.create(function()
+				sampSendChat("Отлично, вы приняты. Вот ваши ключи от шкафчика")
+				sampSetChatInputEnabled(true)
+				sampSetChatInputText("/invite ")
+				wait(1000)
+				sampSendChat("/me передал ключи от шкафчика")
+			end)
+			elseif arg == 6 then
+			sampSendChat("Извините, но вы нам не подходите")
+			elseif arg == 7 then
+			sampSendChat("Почему выбрали именно нашу организацию?")
+		end
+	end
 	while true do wait(0) end
 end
 function traffic_stop()
 	traffic_stop_state = imgui.ImBool(false)
+	function traffic_stop_gofunc(arg)
+		if arg == 1 then
+			sampSendChat("/me подошел к авто, прикосунлся к задней фаре, пошел дальше")
+			elseif arg == 2 then
+			lua_thread.create(function()
+				local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+				if _ then
+					local nickname = sampGetPlayerNickname(pid)
+					nickname = nickname:gsub("_", " ")
+					sampSendChat("Здравствуйте, я сотрудник полиции "..nickname..".")
+					sampSetChatInputEnabled(true)
+					sampSetChatInputText("/showbadge ")
+					wait(1000)
+					sampSendChat("Предъявите пожалуйста ваши документы.")
+				end
+			end)
+			elseif arg == 3 then
+			sampSendChat("/me внимательно изучил все документы и передал их обратно")
+			elseif arg == 4 then
+			sampSendChat("Все в порядке, не смею вас больше задерживать.")
+			elseif arg == 5 then
+			sampSetChatInputEnabled(true)
+			sampSetChatInputText("Мне придется выписать вам штраф за ")
+			elseif arg == 6 then
+			sampSendChat("Отлично, не могли бы вы выйти из авто?")
+		end
+	end
 	while true do wait(0) end
 end
 function patrol()
 	patrol_state = imgui.ImBool(false)
 	patrol_marker = imgui.ImBuffer(256)
 	patrol_selected = imgui.ImInt(0)
+	function patrol_gofunc(arg)
+		if arg == 1 then
+			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+			if _ then
+				sampSendChat("/r Выехал в патруль как "..patrol_marker.v.."-"..pid..", код 4, доступен")
+			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
+			elseif arg == 2 then
+			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+			local x, y, z = getCharCoordinates(PLAYER_PED)
+			local nameZone = calculateZone(x, y, z)
+			if _ then
+				sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Продолжаю патрулирование, район: "..nameZone..", код 4, доступен")
+			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
+			elseif arg == 3 then
+			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+			local x, y, z = getCharCoordinates(PLAYER_PED)
+			local nameZone = calculateZone(x, y, z)
+			if _ then
+				sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Провожу траффик-стоп, район: "..nameZone..", код 4, недоступен")
+			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
+			elseif arg == 4 then
+			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+			local x, y, z = getCharCoordinates(PLAYER_PED)
+			local nameZone = calculateZone(x, y, z)
+			if _ then
+				lua_thread.create(function()
+					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Провожу траффик-стоп, район: "..nameZone..", код 4, недоступен")
+					wait(1000)
+					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Запрашиваю свободные юниты, район: "..nameZone..", код 2")
+					wait(1000)
+					sampSendChat("/bk 10-20")
+				end)
+			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
+			elseif arg == 5 then
+			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+			local x, y, z = getCharCoordinates(PLAYER_PED)
+			local nameZone = calculateZone(x, y, z)
+			if _ then
+				lua_thread.create(function()
+					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Нахожусь в перестрелке, район: "..nameZone..", код 3, недоступен")
+					wait(1000)
+					sampSendChat("/bk 10-20")
+				end)
+			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
+			elseif arg == 6 then
+			local _, pid = sampGetPlayerIdByCharHandle(PLAYER_PED)
+			local x, y, z = getCharCoordinates(PLAYER_PED)
+			local nameZone = calculateZone(x, y, z)
+			if _ then
+				lua_thread.create(function()
+					sampSendChat("/r "..patrol_marker.v.."-"..pid.." | Начинаю погоню, нужна помощь, район: "..nameZone..", код 3, недоступен")
+					wait(1000)
+					sampSendChat("/rb /pursuit "..pid)
+				end)
+			else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Ошибка",-1) end
+		end
+	end
 	while true do wait(0)
 		if patrol_selected.v == 0 then patrol_marker.v = "L" end
 		if patrol_selected.v == 1 then patrol_marker.v = "A" end
@@ -2897,13 +2945,107 @@ function calculateZone(x, y, z)
         {"Лас Вентурас", 869.461, 596.349, -242.990, 2997.060, 2993.870, 900.000},
         {"Туманный округ", -1213.910, -768.027, -242.990, 2997.060, 596.349, 900.000},
         {"Лос Сантос", 44.615, -2892.970, -242.990, 2997.060, -768.027, 900.000}
-    }
+	}
     for i, v in ipairs(streets) do
         if (x >= v[2]) and (y >= v[3]) and (z >= v[4]) and (x <= v[5]) and (y <= v[6]) and (z <= v[7]) then
             return v[1]
-        end
-    end
+		end
+	end
     return 'Пригород'
+end
+function autoPiar()
+	autoPiar_state = imgui.ImBool(false)
+	autoPiar_delay = imgui.ImInt(mainIni.autoPiar.delay_c)
+	autoPiar_text = imgui.ImBuffer(tostring(mainIni.autoPiar.text_c), 1024)
+	autoPiar_vr = imgui.ImBool(mainIni.autoPiar.vr_c)
+	autoPiar_ad = imgui.ImBool(mainIni.autoPiar.ad_c)
+	autoPiar_ad_vip = imgui.ImBool(mainIni.autoPiar.ad_vip_c)
+	autoPiar_j = imgui.ImBool(mainIni.autoPiar.j_c)
+	autoPiar_org = imgui.ImBool(mainIni.autoPiar.org_c)
+	autoPiar_selected_org = imgui.ImInt(mainIni.autoPiar.selected_org)
+	autoPiar_timer = 0
+	local _ = false
+	addEventHandler("onReceiveRpc", function(id,bs)
+		if id == 61 and _ and autoPiar_ad.v then
+			local did = raknetBitStreamReadInt16(bs)
+			local style = raknetBitStreamReadInt8(bs)
+			local tl = raknetBitStreamReadInt8(bs)
+			local t = raknetBitStreamReadString(bs,tl)
+			local b1l = raknetBitStreamReadInt8(bs)
+			local b1 = raknetBitStreamReadString(bs,b1l)
+			local b2l = raknetBitStreamReadInt8(bs)
+			local b2 = raknetBitStreamReadString(bs,b2l)
+			local text = raknetBitStreamDecodeString(bs,4096)
+			if t:match("{BFBBBA}Подача объявления | Подтверждение") then
+				sampSendDialogResponse(did, 1, 1, "")
+				return false
+			end
+			if style == 5 and t:match("{BFBBBA}Подача объявления") then
+				if autoPiar_ad_vip.v then sampSendDialogResponse(did, 1, 2, "")
+				else sampSendDialogResponse(did, 1, 1, "") end
+				return false
+			end
+		end
+	end)
+	while true do wait(0)
+		if autoPiar_state.v then
+			lua_thread.create(function()
+				local text = u8:decode(autoPiar_text.v)
+				_ = true
+				if autoPiar_vr.v and autoPiar_state.v then
+					if text ~= "" then
+						sampSendChat("/vr "..text)
+						wait(3000)
+						else
+						sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы не ввели текст пиара", -1)
+						autoPiar_state.v = false
+					end
+				end
+				if autoPiar_ad.v and autoPiar_state.v then
+					if text ~= "" then
+						if text:len() > 19 then
+							sampSendChat("/ad "..text)
+							wait(3000)
+							else
+							sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Текст пиара для ad должен быть от 20 символов")
+						end
+						else
+						sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы не ввели текст пиара", -1)
+						autoPiar_state.v = false
+					end
+				end
+				if autoPiar_j.v and autoPiar_state.v then
+					if text ~= "" then
+						sampSendChat("/j "..text)
+						wait(3000)
+						else
+						sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы не ввели текст пиара", -1)
+						autoPiar_state.v = false
+					end
+				end
+				if autoPiar_org.v and autoPiar_state.v then
+					if text ~= "" then
+						if autoPiar_selected_org.v == 0 then
+							sampSendChat("/fb "..text)
+							else
+							sampSendChat("/rb "..text)
+						end
+						wait(3000)
+						else
+						sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы не ввели текст пиара", -1)
+						autoPiar_state.v = false
+					end
+				end
+				_ = false
+			end)
+			autoPiar_timer = autoPiar_delay.v
+			for i = 0, autoPiar_delay.v do
+				wait(1000)
+				autoPiar_timer = autoPiar_timer - 1
+				if not autoPiar_state.v then break end
+			end
+		end
+	end
 end
 function save()
 	local newData = {
@@ -2967,6 +3109,16 @@ function save()
 			localTime_state_c = setTime_localTime_state.v,
 			time_c = setTime_time.v,
 			weather_c = setTime_weather.v,
+		},
+		autoPiar = {
+			delay_c = autoPiar_delay.v,
+			text_c = autoPiar_text.v,
+			vr_c = autoPiar_vr.v,
+			ad_c = autoPiar_ad.v,
+			ad_vip_c = autoPiar_ad_vip.v,
+			j_c = autoPiar_j.v,
+			org_c = autoPiar_org.v,
+			selected_org = autoPiar_selected_org.v,
 		},
 		police = {
 			taser_state_c = taser_state.v,
