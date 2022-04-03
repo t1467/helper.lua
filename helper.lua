@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.8")
+script_version("1.6.9")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -3248,6 +3248,7 @@ function insuranceNY()
 end
 function insuranceFill()
 	insuranceFill_state = imgui.ImBool(mainIni.insurance.fill_state_c)
+	local st = false
 	addEventHandler("onReceiveRpc", function(id,bs)
 		if id == 134 and insuranceFill_state.v then
             local tid = raknetBitStreamReadInt16(bs)
@@ -3277,12 +3278,19 @@ function insuranceFill()
 			if text == "ARZ_INSURANCE_COMPANY" then
 				lua_thread.create(function()
 					sampSendClickTextdraw(242)
-					wait(600)
+					repeat wait(100) until st
+					st = false
 					sampSendClickTextdraw(243)
-					wait(600)
+					repeat wait(100) until st
+					st = false
 					sampSendClickTextdraw(244)
-					wait(600)
+					repeat wait(100) until st
+					st = false
 					sampSendClickTextdraw(245)
+				end)
+				lua_thread.create(function()
+					wait(3000)
+					st = false
 				end)
 			end
 		end
@@ -3299,6 +3307,7 @@ function insuranceFill()
 			if t == "{BFBBBA}Заполнение документа" then
 				local request = text:match("{ffff00}(.+)")
 				sampSendDialogResponse(id, 1, 0, request)
+				st = true
 				return false
 			end
 		end
