@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.11")
+script_version("1.6.12")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -3085,6 +3085,12 @@ function insuranceCatch()
             color = raknetBitStreamReadInt32(bs)
             textl = raknetBitStreamReadInt32(bs)
             text = raknetBitStreamReadString(bs, textl)
+			if text:match("Вы приняли заявление .+ на рассмотрение") then
+				lua_thread.create(function()
+					wait(100)
+					sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы взяли заявление",-1)
+				end)
+			end
             if text:match(".+ подал заявление на страхование имущества, номер заявления:") then
 				local inArea = isCharInArea3d(PLAYER_PED, 1522.6199, 1614.5894, 8.5453, 1519.6072, 1617.7963, 12.2203, false)
 				if inArea then
@@ -3151,10 +3157,6 @@ function insuranceCatch()
 			if t:match("{BFBBBA}Заявление") and text:match("{ffffff}Заявление {ffff00}.+{ffffff}от {ffff00}.+") then
 				sampSendDialogResponse(did, 1, 0, "")
 				finded = false
-				lua_thread.create(function()
-					wait(100)
-					sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы взяли заявление",-1)
-				end)
 				return false
 			end
 		end
