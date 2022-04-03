@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.4")
+script_version("1.6.5")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -3120,7 +3120,12 @@ function insuranceCatch()
 					raknetBitStreamWriteInt16(bs,32772)
 					raknetSendBitStream(bs)
 					raknetDeleteBitStream(bs)
-				else sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}¬ы слишком далеко от прин€ти€ за€влений",-1) end
+				else
+					lua_thread.create(function()
+						wait(100)
+						sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}¬ы слишком далеко от прин€ти€ за€влений",-1)
+					end)
+				end
 			end
 		end
 		if id == 61 and insuranceCatch_state.v and finded then
