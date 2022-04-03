@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.7")
+script_version("1.6.8")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
