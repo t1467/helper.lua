@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.3")
+script_version("1.6.4")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -8,7 +8,6 @@ local memory = require 'memory'
 local encoding = require 'encoding'
 local inicfg = require 'inicfg'
 local imgui = require('imgui')
-imgui.HotKey = require('imgui_addons').HotKey
 encoding.default = 'CP1251'
 u8 = encoding.UTF8
 local mainIni = inicfg.load({
