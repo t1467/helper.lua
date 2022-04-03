@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.10")
+script_version("1.6.11")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -73,7 +73,6 @@ local mainIni = inicfg.load({
 		weather_c = 1,
 	},
 	autoPiar = {
-		state_c = false,
 		delay_c = 300,
 		text_c = "",
 		vr_c = false,
@@ -1496,9 +1495,9 @@ function antiDrugs()
     antiDrugs_state = imgui.ImBool(mainIni.settings.antiDrugs_state_c)
     addEventHandler("onReceiveRpc", function(id, bs)
         if id == 93 and antiDrugs_state.v then
-            local color = raknetBitStreamReadInt32(bs)
-            local textl = raknetBitStreamReadInt32(bs)
-            local text = raknetBitStreamReadString(bs, textl)
+            color = raknetBitStreamReadInt32(bs)
+            textl = raknetBitStreamReadInt32(bs)
+            text = raknetBitStreamReadString(bs, textl)
             if tostring(text):match("У вас началась сильная ломка") or tostring(text):match("Вашему персонажу нужно принять") then
                 return false
 			end
@@ -2984,7 +2983,7 @@ function calculateZone(x, y, z)
     return 'Пригород'
 end
 function autoPiar()
-	autoPiar_state = imgui.ImBool(mainIni.autoPiar.state_c)
+	autoPiar_state = imgui.ImBool(false)
 	autoPiar_delay = imgui.ImInt(mainIni.autoPiar.delay_c)
 	autoPiar_text = imgui.ImBuffer(tostring(mainIni.autoPiar.text_c), 1024)
 	autoPiar_vr = imgui.ImBool(mainIni.autoPiar.vr_c)
@@ -3081,18 +3080,11 @@ end
 function insuranceCatch()
 	insuranceCatch_state = imgui.ImBool(mainIni.insurance.catch_state_c)
 	local finded = false
-	local clos = false
 	addEventHandler("onReceiveRpc", function(id, bs)
         if id == 93 and insuranceCatch_state.v then
             color = raknetBitStreamReadInt32(bs)
             textl = raknetBitStreamReadInt32(bs)
             text = raknetBitStreamReadString(bs, textl)
-			if text:match("Вы приняли заявление №1 на рассмотрение.") then
-				lua_thread.create(function()
-					wait(100)
-					sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы взяли заявление",-1)
-				end)
-			end
             if text:match(".+ подал заявление на страхование имущества, номер заявления:") then
 				local inArea = isCharInArea3d(PLAYER_PED, 1522.6199, 1614.5894, 8.5453, 1519.6072, 1617.7963, 12.2203, false)
 				if inArea then
@@ -3159,15 +3151,19 @@ function insuranceCatch()
 			if t:match("{BFBBBA}Заявление") and text:match("{ffffff}Заявление {ffff00}.+{ffffff}от {ffff00}.+") then
 				sampSendDialogResponse(did, 1, 0, "")
 				finded = false
+				lua_thread.create(function()
+					wait(100)
+					sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Вы взяли заявление",-1)
+				end)
 				return false
 			end
 		end
-		end)
+	end)
 	while true do wait(0) end
 end
 function insuranceNY()
 	insuranceNY_state = imgui.ImBool(mainIni.insurance.NY_state_c)
-	while true do wait(0)
+	while true do wait(50)
 		if sampTextdrawIsExists(2062) and insuranceNY_state.v then
 			local inArea2 = isCharInArea3d(PLAYER_PED, 1524.0441, 1613.4524, 9.2203, 1526.7075, 1616.5979, 11.6203, false)
 			local inArea1 = isCharInArea3d(PLAYER_PED, 1516.5701, 1613.4512, 9.1453, 1518.8618, 1616.6068, 11.2453, false)
@@ -3396,7 +3392,6 @@ function save()
 			weather_c = setTime_weather.v,
 		},
 		autoPiar = {
-			state_c = autoPiar_state.v,
 			delay_c = autoPiar_delay.v,
 			text_c = autoPiar_text.v,
 			vr_c = autoPiar_vr.v,
