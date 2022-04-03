@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.2")
+script_version("1.6.3")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -980,7 +980,7 @@ function autoReconnect()
 			local lenght = raknetBitStreamReadInt32(bs)
 			local text = raknetBitStreamReadString(bs,lenght)
 			if text == ("/rec") then
-                sampDisconnectWithReason(false)
+                sampDisconnectWithReason(true)
 				sampSetGamestate(1)
                 return false
 			end
@@ -988,8 +988,8 @@ function autoReconnect()
 	end)
     while true do wait(0)
         local chatstring = sampGetChatString(99)
-        if chatstring == "Server closed the connection." or chatstring == "You are banned from this server." or chatstring == "Wrong server password." and autoReconnect_state.v then
-	        sampDisconnectWithReason(false)
+        if chatstring == "Server closed the connection." or chatstring == "You are banned from this server." or chatstring == "Use /quit to exit or press ESC and select Quit Game" or chatstring == "Wrong server password." and autoReconnect_state.v then
+	        sampDisconnectWithReason(true)
             wait(autoReconnect_delay.v * 1000)
             sampSetGamestate(1)
 		end
