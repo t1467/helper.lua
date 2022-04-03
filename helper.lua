@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.1")
+script_version("1.6.2")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -975,6 +975,17 @@ end
 function autoReconnect()
     autoReconnect_state = imgui.ImBool(mainIni.afktools.autoReconnect_state_c)
     autoReconnect_delay = imgui.ImInt(mainIni.afktools.autoReconnect_delay_c)
+	addEventHandler("onSendRpc", function(id,bs)
+		if id == 50 then
+			local lenght = raknetBitStreamReadInt32(bs)
+			local text = raknetBitStreamReadString(bs,lenght)
+			if text == ("/rec") then
+                sampDisconnectWithReason(false)
+				sampSetGamestate(1)
+                return false
+			end
+		end
+	end)
     while true do wait(0)
         local chatstring = sampGetChatString(99)
         if chatstring == "Server closed the connection." or chatstring == "You are banned from this server." or chatstring == "Wrong server password." and autoReconnect_state.v then
@@ -3145,7 +3156,7 @@ function insuranceCatch()
 end
 function insuranceNY()
 	insuranceNY_state = imgui.ImBool(mainIni.insurance.NY_state_c)
-	while true do wait(50)
+	while true do wait(10)
 		if sampTextdrawIsExists(2062) and insuranceNY_state.v then
 			local inArea2 = isCharInArea3d(PLAYER_PED, 1524.0441, 1613.4524, 9.2203, 1526.7075, 1616.5979, 11.6203, false)
 			local inArea1 = isCharInArea3d(PLAYER_PED, 1516.5701, 1613.4512, 9.1453, 1518.8618, 1616.6068, 11.2453, false)
