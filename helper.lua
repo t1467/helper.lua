@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.13")
+script_version("1.6.14")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -34,6 +34,7 @@ local mainIni = inicfg.load({
 		autoAltAndShift_state_c = false,
 		autoSport_state_c = false,
 		moneySeparate_state_c = false,
+		cruise_state_c = false,
 	},
 	afktools = {
 		antiafk_state_c = false,
@@ -96,6 +97,9 @@ local mainIni = inicfg.load({
 		fill_state_c = false,
 		anim_state_c = false,
 	},
+	medic = {
+		
+	},
 },"unknown.ini")
 cursorActive = false
 playerLock = false
@@ -107,6 +111,7 @@ setTime_window = false
 police_window = false
 autoPiar_window = false
 insurance_window = false
+medic_window = false
 function closeAllWindow()
 	settings_window = false
 	afk_window = false
@@ -115,6 +120,7 @@ function closeAllWindow()
 	police_window = false
 	autoPiar_window = false
 	insurance_window = false
+	medic_window = false
 end
 function imgui.OnDrawFrame()
 	if main_window then
@@ -136,6 +142,7 @@ function imgui.OnDrawFrame()
 			if imgui.Button(u8">> Для собеседований <<", imgui.ImVec2(-1,20)) then sobes_state.v = not sobes_state.v end
 			if imgui.Button(u8"Полиция", imgui.ImVec2(-1,20)) then closeAllWindow() police_window = true end
 			if imgui.Button(u8"Страховая", imgui.ImVec2(-1,20)) then closeAllWindow() insurance_window = true end
+			if imgui.Button(u8"Медицинский центр", imgui.ImVec2(-1,20)) then closeAllWindow() medic_window = true end
 		end
 		imgui.EndChild()
 		imgui.SameLine(290)
@@ -165,6 +172,7 @@ function imgui.OnDrawFrame()
 			imgui.Checkbox(u8"Ускорение анимации денег", fastMoney_state)
 			imgui.Checkbox(u8"Авто-нажатие Alt/Shift", autoAltAndShift_state)
 			imgui.Checkbox(u8"Авто спорт-режим в авто", autoSport_state)
+			imgui.Checkbox(u8"Круиз контроль на (=)", cruise_state)
 		end
 		if afk_window then
 			imgui.Checkbox(u8"Работа в свернутом режиме", antiafk_state)
@@ -236,6 +244,9 @@ function imgui.OnDrawFrame()
 			imgui.Checkbox(u8"Авто N/Y", insuranceNY_state)
 			imgui.Checkbox(u8"Авто заполнение", insuranceFill_state)
 			imgui.Checkbox(u8"Отключение анимации документов", insuranceRemoveAnim_state)
+		end
+		if medic_window then
+			imgui.Text(u8"В разработке")
 		end
 		imgui.EndChild()
 		imgui.End()
@@ -456,6 +467,7 @@ function main()
 	lua_thread.create(insuranceNY)
 	lua_thread.create(insuranceFill)
 	lua_thread.create(insuranceRemoveAnim)
+	lua_thread.create(cruise)
 	lua_thread.create(function()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
@@ -855,7 +867,7 @@ function removeTrash()
         ".+ Игрок {FF6347}.+%(%d+%){FFFFFF} купил улучшение {FF6347}.Больше недвижимости.{FFFFFF}, теперь он может владеть 4 домами.",
         ".+ испытал удачу при открытии .+ и выиграл.+",
         "%[Информация%] .+ при сборе урожая на ферме словил .+",
-		"Открыв СУНДУК с подарками, игрок .+ получил .+%!",
+		"Открыв СУНДУК с подарками, игрок .+ получил .+",
 	}
     removeTrash_trash = {
         "Чтобы закрыть донат меню, используйте: {FFFFFF}.ESC.",
@@ -1237,7 +1249,7 @@ function fakeAfk()
             sampTextdrawSetAlign(223, 1)
             sampTextdrawSetStyle(223, 3)
             wait(0)
-            else
+        else
             if sampTextdrawIsExists(223) then sampTextdrawDelete(223) end
 		end
 	end
@@ -3332,6 +3344,48 @@ function insuranceRemoveAnim()
 	end)
 	while true do wait(0) end
 end
+function cruise()
+	cruise_state = imgui.ImBool(mainIni.settings.cruise_state_c)
+	local active = false
+	local speed = 0
+	lua_thread.create(function()
+		while true do wait(0)
+			if active then
+				sampTextdrawCreate(226, "~r~CRUISE", 10, 430)
+				sampTextdrawSetLetterSizeAndColor(223, 0.2, 1, -1)
+				sampTextdrawSetOutlineColor(226, 1, 0xFF000000)
+				sampTextdrawSetAlign(226, 1)
+				sampTextdrawSetStyle(226, 1)
+				wait(0)
+			else
+				if sampTextdrawIsExists(226) then sampTextdrawDelete(226) end
+			end
+		end
+	end)
+	while true do wait(0)
+		if isCharInAnyCar(PLAYER_PED) and cruise_state.v then
+			local engine = isCarEngineOn(storeCarCharIsInNoSave(PLAYER_PED))
+			if wasKeyPressed(0xBB) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() then
+				speed = getCarSpeed(storeCarCharIsInNoSave(PLAYER_PED))
+				active = not active
+			end
+			if active and engine then
+				setGameKeyState(16, 255)
+				if getCarSpeed(storeCarCharIsInNoSave(PLAYER_PED)) > speed then
+					setCarForwardSpeed(storeCarCharIsInNoSave(PLAYER_PED), speed)
+				end
+			end
+			if wasKeyPressed(0x57) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() then
+				active = false
+			end
+			if wasKeyPressed(0x53) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() then
+				active = false
+			end
+        else
+			active = false
+		end
+	end
+end
 function save()
 	local newData = {
 		settings = {
@@ -3357,6 +3411,7 @@ function save()
 			autoAltAndShift_state_c = autoAltAndShift_state.v,
 			autoSport_state_c = autoSport_state.v,
 			moneySeparate_state_c = moneySeparate_state.v,
+			cruise_state_c = cruise_state.v,
 		},
 		afktools = {
 			antiafk_state_c = antiafk_state.v,
@@ -3418,6 +3473,9 @@ function save()
 			NY_state_c = insuranceNY_state.v,
 			fill_state_c = insuranceFill_state.v,
 			anim_state_c = insuranceRemoveAnim_state.v,
+		},
+		medic = {
+			
 		},
 	}
 	inicfg.save(newData,"unknown.ini")
