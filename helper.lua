@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.6.14")
+script_version("1.7")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -35,6 +35,9 @@ local mainIni = inicfg.load({
 		autoSport_state_c = false,
 		moneySeparate_state_c = false,
 		cruise_state_c = false,
+		sbiv_state_c = false,
+		notepad_text_c = "",
+		autolock_state_c = false,
 	},
 	afktools = {
 		antiafk_state_c = false,
@@ -173,6 +176,8 @@ function imgui.OnDrawFrame()
 			imgui.Checkbox(u8"Авто-нажатие Alt/Shift", autoAltAndShift_state)
 			imgui.Checkbox(u8"Авто спорт-режим в авто", autoSport_state)
 			imgui.Checkbox(u8"Круиз контроль на (=)", cruise_state)
+			imgui.Checkbox(u8"Сбив на Q", sbiv_state)
+			imgui.Checkbox(u8"Авто-лок для транспорта", autolock_state)
 		end
 		if afk_window then
 			imgui.Checkbox(u8"Работа в свернутом режиме", antiafk_state)
@@ -212,7 +217,7 @@ function imgui.OnDrawFrame()
 			imgui.Checkbox(u8"Включить", setTime_state)
 			if setTime_state.v then
 				imgui.Checkbox(u8"Синхронизация с локальным временем", setTime_localTime_state)
-				imgui.InputInt(u8"Время", setTime_time, 1, 100)
+				if imgui.InputInt(u8"Время", setTime_time, 1, 100) then setTime_localTime_state.v = false end
 				imgui.InputInt(u8"Погода", setTime_weather, 1, 100)
 			end
 		end
@@ -337,6 +342,16 @@ function imgui.OnDrawFrame()
 		if imgui.Button(u8"10-66", imgui.ImVec2(-1,20)) then patrol_gofunc(4) end
 		if imgui.Button(u8"Перестрелка", imgui.ImVec2(-1,20)) then patrol_gofunc(5) end
 		if imgui.Button(u8"Погоня", imgui.ImVec2(-1,20)) then patrol_gofunc(6) end
+        imgui.End()
+        theme()
+	end
+	if notepad_window then
+        local xс, yс = getScreenResolution()
+        imgui.SetNextWindowPos(imgui.ImVec2(xс / 2 - 350, yс / 2 - 200), imgui.Cond.FirstUseEver)
+        imgui.SetNextWindowSize(imgui.ImVec2(700,400))
+        imgui.GetStyle().Colors[imgui.Col.WindowBg] = imgui.ImVec4(0, 0, 0, 1.00)
+        imgui.Begin(u8'Блокнот', window, imgui.WindowFlags.NoCollapse + imgui.WindowFlags.NoResize + imgui.WindowFlags.NoScrollbar + imgui.WindowFlags.NoMove)
+		imgui.InputTextMultiline(u8"##sdfg", notepad_text, imgui.ImVec2(685,365))
         imgui.End()
         theme()
 	end
@@ -468,6 +483,9 @@ function main()
 	lua_thread.create(insuranceFill)
 	lua_thread.create(insuranceRemoveAnim)
 	lua_thread.create(cruise)
+	lua_thread.create(sbiv)
+	lua_thread.create(notepad)
+	lua_thread.create(autolock)
 	lua_thread.create(function()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
@@ -480,8 +498,9 @@ function main()
 	end
 end
 function onWindowMessage(msg, wparam, lparam)
-	if wparam == 0x1B and (main_window or cursorActive) then
+	if wparam == 0x1B and (main_window or cursorActive or notepad_window) then
 		main_window = false
+		notepad_window = false
 		consumeWindowMessage(true, false)
 		lua_thread.create(function()
 			wait(5)
@@ -1073,8 +1092,10 @@ function carkey()
             text = tostring(raknetBitStreamReadString(bs, count))
             if tostring(text):match("Необходимо вставить ключи в зажигание. Используйте: ./key.") then
                 lua_thread.create(function()
-                    wait(100)
                     sampSendChat("/key")
+					run = true
+					wait(1000)
+					run = false
 				end)
                 return false
 			end
@@ -1084,10 +1105,10 @@ function carkey()
 					local nick = sampGetPlayerNickname(id)
 					if text:match(tostring(nick)) and tostring(nick):len() > 0 then
 						lua_thread.create(function()
-							wait(100)
+							wait(0)
 							sampSendChat("/key")
 							run = true
-							wait(3000)
+							wait(1000)
 							run = false
 						end)
 					end
@@ -2474,6 +2495,32 @@ function moneySeparate()
             raknetBitStreamEncodeString(bs,tostring(text))
             return true, id, bs
 		end
+		if id == 36 and moneySeparate_state.v then
+            local labelId = raknetBitStreamReadInt16(bs)
+            local labelColor = raknetBitStreamReadInt32(bs)
+            local X = raknetBitStreamReadFloat(bs)
+            local Y = raknetBitStreamReadFloat(bs)
+            local Z = raknetBitStreamReadFloat(bs)
+            local dist = raknetBitStreamReadFloat(bs)
+            local b = raknetBitStreamReadInt8(bs)
+            local playerId = raknetBitStreamReadInt16(bs)
+            local vehId = raknetBitStreamReadInt16(bs)
+            local text = raknetBitStreamDecodeString(bs,4096)
+            text = separator(text)
+			raknetDeleteBitStream(bs)
+            bs = raknetNewBitStream()
+			raknetBitStreamWriteInt16(bs,labelId)
+			raknetBitStreamWriteInt32(bs,labelColor)
+			raknetBitStreamWriteFloat(bs,X)
+			raknetBitStreamWriteFloat(bs,Y)
+			raknetBitStreamWriteFloat(bs,Z)
+			raknetBitStreamWriteFloat(bs,dist)
+			raknetBitStreamWriteInt8(bs,b)
+			raknetBitStreamWriteInt16(bs,playerId)
+			raknetBitStreamWriteInt16(bs,vehId)
+			raknetBitStreamEncodeString(bs,text)
+			return true, id, bs
+		end
 	end)
     while true do wait(0) end
 end
@@ -3386,6 +3433,90 @@ function cruise()
 		end
 	end
 end
+function sbiv()
+	sbiv_state = imgui.ImBool(mainIni.settings.sbiv_state_c)
+	while true do wait(0)
+		if isKeyJustPressed(0x51) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() and sbiv_state.v and not isCharInAnyCar(PLAYER_PED) then
+			local _, id = sampGetPlayerIdByCharHandle(PLAYER_PED)
+			if _ then
+				bs = raknetNewBitStream()
+				raknetBitStreamWriteInt16(bs,id)
+				raknetEmulRpcReceiveBitStream(87, bs)
+				raknetDeleteBitStream(bs)
+			end
+		end
+	end
+end
+function notepad()
+	notepad_window = false
+	notepad_text = imgui.ImBuffer(tostring(decodeJson(mainIni.settings.notepad_text_c)), 256)
+	addEventHandler("onSendRpc", function(id,bs)
+		if id == 50 then
+			local lenght = raknetBitStreamReadInt32(bs)
+			local text = raknetBitStreamReadString(bs,lenght)
+			if text == ("/notepad") then
+                notepad_window = true
+                cursorActive = true
+                playerLock = true
+                return false
+			end
+		end
+	end)
+	while true do wait(0) end
+end
+function autolock()
+	autolock_state = imgui.ImBool(mainIni.settings.autolock_state_c)
+	local go = false
+	function getClosestCarId()
+		local minDist = 9999
+		local closestId = -1
+		local x, y, z = getCharCoordinates(PLAYER_PED)
+		for i = 0, 1800 do
+			local streamed, pedID = sampGetCarHandleBySampVehicleId(i)
+			if streamed then
+				local xi, yi, zi = getCarCoordinates(pedID)
+				local dist = math.sqrt( (xi - x) ^ 2 + (yi - y) ^ 2 + (zi - z) ^ 2 )
+				if dist < minDist then
+					minDist = dist
+					closestId = i
+				end
+			end
+		end
+		return closestId, minDist
+	end
+	while true do wait(0)
+		local carId, dist = getClosestCarId()
+		local _, vehicle = sampGetCarHandleBySampVehicleId(carId)
+		if _ then
+			local bd = getCarDoorLockStatus(vehicle)
+			if isKeyDown(0x46) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() and autolock_state.v and not isCharInAnyCar(PLAYER_PED) and dist < 4 and bd == 2 then
+				go = true
+				sampSendChat("/lockid "..carId)
+				lua_thread.create(function()
+					for i = 1, 4 do
+						local door = getCarDoorLockStatus(vehicle)
+						local carId, dist = getClosestCarId()
+						if door ~= 2 and dist < 4 then
+							sampSendEnterVehicle(carId, false)
+							taskEnterCarAsDriver(PLAYER_PED, vehicle, 4000)
+							break
+						end
+						wait(500)
+					end
+				end)
+			end
+			if wasKeyReleased(0x46) and go then
+				go = false
+				lua_thread.create(function()
+					for i = 1, 15 do
+						if isCharInAnyCar(PLAYER_PED) then sampSendChat("/lock") break end
+						wait(500)
+					end
+				end)
+			end
+		end
+	end
+end
 function save()
 	local newData = {
 		settings = {
@@ -3412,6 +3543,9 @@ function save()
 			autoSport_state_c = autoSport_state.v,
 			moneySeparate_state_c = moneySeparate_state.v,
 			cruise_state_c = cruise_state.v,
+			sbiv_state_c = sbiv_state.v,
+			notepad_text_c = encodeJson(notepad_text.v),
+			autolock_state_c = autolock_state.v,
 		},
 		afktools = {
 			antiafk_state_c = antiafk_state.v,
