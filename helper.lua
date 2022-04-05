@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7")
+script_version("1.7.2")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -3489,7 +3489,7 @@ function autolock()
 		local _, vehicle = sampGetCarHandleBySampVehicleId(carId)
 		if _ then
 			local bd = getCarDoorLockStatus(vehicle)
-			if isKeyDown(0x46) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() and autolock_state.v and not isCharInAnyCar(PLAYER_PED) and dist < 4 and bd == 2 then
+			if isKeyJustPressed(0x46) and not sampIsChatInputActive() and not sampIsDialogActive() and not sampIsScoreboardOpen() and not isSampfuncsConsoleActive() and autolock_state.v and not isCharInAnyCar(PLAYER_PED) and dist < 4 and bd == 2 then
 				go = true
 				sampSendChat("/lockid "..carId)
 				lua_thread.create(function()
@@ -3509,7 +3509,7 @@ function autolock()
 				go = false
 				lua_thread.create(function()
 					for i = 1, 15 do
-						if isCharInAnyCar(PLAYER_PED) then sampSendChat("/lock") break end
+						if isCharInAnyCar(PLAYER_PED) then local id, dist = getClosestCarId() sampSendChat("/lockid "..id) break end
 						wait(500)
 					end
 				end)
