@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.7")
+script_version("1.7.8")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -507,7 +507,7 @@ function main()
 	while true do wait(0)
         imgui.ShowCursor = cursorActive
         imgui.LockPlayer = playerLock
-		save()
+		pcall(function() save() end)
 	end
 end
 function onWindowMessage(msg, wparam, lparam)
@@ -3533,7 +3533,7 @@ function autolock()
 			if wasKeyReleased(0x46) and go then
 				go = false
 				lua_thread.create(function()
-					for i = 1, 15 do
+					for i = 1, 30 do
 						if isCharInAnyCar(PLAYER_PED) then local id, dist = getClosestCarId() sampSendChat("/lockid "..id) break end
 						wait(500)
 					end
