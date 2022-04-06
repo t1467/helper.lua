@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.3")
+script_version("1.7.4")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -490,15 +490,105 @@ function main()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
 	end)
-	lua_thread.create(function()
-		while true do wait(100)
-			save()
-		end
-	end)
 	imgui.Process = true
-	while true do wait(0)
+	while true do wait(50)
         imgui.ShowCursor = cursorActive
         imgui.LockPlayer = playerLock
+		local newData = {
+			settings = {
+				activate_cmd_c = activate_cmd.v,
+				removeLogo_state_c = removeLogo_state.v,
+				ctime_state_c = ctime_state.v,
+				skipZZ_state_c = skipZZ_state.v,
+				fastReport_state_c = fastReport_state.v,
+				carkey_state_c = carkey_state.v,
+				autopin_state_c = autopin_state.v,
+				autopin_pin_c = autopin_pin.v,
+				chatCalc_state_c = chatCalc_state.v,
+				getGuns_state_c = getGuns_state.v,
+				antiDrugs_state_c = antiDrugs_state.v,
+				resendVr_state_c = resendVr_state.v,
+				antiCarSkill_state_c = antiCarSkill_state.v,
+				noBike_state_c = noBike_state.v,
+				launcherEmul_state_c = launcherEmul_state.v,
+				launcherEmul_veh_c = launcherEmul_veh.v,
+				fishEye_state_c = fishEye_state.v,
+				fastFill_state_c = fastFill_state.v,
+				fastMoney_state_c = fastMoney_state.v,
+				autoAltAndShift_state_c = autoAltAndShift_state.v,
+				autoSport_state_c = autoSport_state.v,
+				moneySeparate_state_c = moneySeparate_state.v,
+				cruise_state_c = cruise_state.v,
+				sbiv_state_c = sbiv_state.v,
+				notepad_text_c = encodeJson(notepad_text.v),
+				autolock_state_c = autolock_state.v,
+			},
+			afktools = {
+				antiafk_state_c = antiafk_state.v,
+				autologin_state_c = autologin_state.v,
+				autologin_pass_c = autologin_pass.v,
+				autoEat_state_c = autoEat_state.v,
+				autoEat_disableAnim_c = autoEat_disableAnim.v,
+				autoReconnect_state_c = autoReconnect_state.v,
+				autoReconnect_delay_c = autoReconnect_delay.v,
+				autoHeal_state_c = autoHeal_state.v,
+				autoRoulette_state_c = autoRoulette_state.v,
+				autoRoulette_delay_c = autoRoulette_delay.v,
+			},
+			removeTrash = {
+				state_c = removeTrash_enable.v,
+				clearChatAfterConnect_c = removeTrash_clearChatAfterConnect.v,
+				bonus_status_c = removeTrash_bonus_status.v,
+				events_status_c = removeTrash_events_status.v,
+				help_status_c = removeTrash_help_status.v,
+				ad_status_c = removeTrash_ad_status.v,
+				player_status_c = removeTrash_player_status.v,
+				trash_status_c = removeTrash_trash_status.v,
+				phone_status_c = removeTrash_phone_status.v,
+				space_status_c = removeTrash_space_status.v,
+				bus_status_c = removeTrash_bus_status.v,
+				inkasator_status_c = removeTrash_inkasator_status.v,
+				zoloto_status_c = removeTrash_zoloto_status.v,
+				sobes_status_c = removeTrash_sobes_status.v,
+				prison_status_c = removeTrash_prison_status.v,
+				offDesc_state_c = offDesc_state.v,
+				offFam_state_c = offFam_state.v,
+			},
+			setTime = {
+				state_c = setTime_state.v,
+				localTime_state_c = setTime_localTime_state.v,
+				time_c = setTime_time.v,
+				weather_c = setTime_weather.v,
+			},
+			autoPiar = {
+				delay_c = autoPiar_delay.v,
+				text_c = autoPiar_text.v,
+				vr_c = autoPiar_vr.v,
+				ad_c = autoPiar_ad.v,
+				ad_vip_c = autoPiar_ad_vip.v,
+				j_c = autoPiar_j.v,
+				org_c = autoPiar_org.v,
+				selected_org = autoPiar_selected_org.v,
+			},
+			police = {
+				taser_state_c = taser_state.v,
+				rpGuns_state_c = rpGuns_state.v,
+				megafon_state_c = megafon_state.v,
+				autoMiranda_state_c = autoMiranda_state.v,
+				autoRP_state_c = autoRP_state.v,
+				requireSu_state_c = requireSu_state.v,
+			},
+			insurance = {
+				catch_state_c = insuranceCatch_state.v,
+				NY_state_c = insuranceNY_state.v,
+				fill_state_c = insuranceFill_state.v,
+				anim_state_c = insuranceRemoveAnim_state.v,
+			},
+			medic = {
+				
+			},
+		}
+		inicfg.save(newData,"unknown.ini")
 	end
 end
 function onWindowMessage(msg, wparam, lparam)
@@ -3520,103 +3610,6 @@ function autolock()
 			end
 		end
 	end
-end
-function save()
-	local newData = {
-		settings = {
-			activate_cmd_c = activate_cmd.v,
-			removeLogo_state_c = removeLogo_state.v,
-			ctime_state_c = ctime_state.v,
-			skipZZ_state_c = skipZZ_state.v,
-			fastReport_state_c = fastReport_state.v,
-			carkey_state_c = carkey_state.v,
-			autopin_state_c = autopin_state.v,
-			autopin_pin_c = autopin_pin.v,
-			chatCalc_state_c = chatCalc_state.v,
-			getGuns_state_c = getGuns_state.v,
-			antiDrugs_state_c = antiDrugs_state.v,
-			resendVr_state_c = resendVr_state.v,
-			antiCarSkill_state_c = antiCarSkill_state.v,
-			noBike_state_c = noBike_state.v,
-			launcherEmul_state_c = launcherEmul_state.v,
-			launcherEmul_veh_c = launcherEmul_veh.v,
-			fishEye_state_c = fishEye_state.v,
-			fastFill_state_c = fastFill_state.v,
-			fastMoney_state_c = fastMoney_state.v,
-			autoAltAndShift_state_c = autoAltAndShift_state.v,
-			autoSport_state_c = autoSport_state.v,
-			moneySeparate_state_c = moneySeparate_state.v,
-			cruise_state_c = cruise_state.v,
-			sbiv_state_c = sbiv_state.v,
-			notepad_text_c = encodeJson(notepad_text.v),
-			autolock_state_c = autolock_state.v,
-		},
-		afktools = {
-			antiafk_state_c = antiafk_state.v,
-			autologin_state_c = autologin_state.v,
-			autologin_pass_c = autologin_pass.v,
-			autoEat_state_c = autoEat_state.v,
-			autoEat_disableAnim_c = autoEat_disableAnim.v,
-			autoReconnect_state_c = autoReconnect_state.v,
-			autoReconnect_delay_c = autoReconnect_delay.v,
-			autoHeal_state_c = autoHeal_state.v,
-			autoRoulette_state_c = autoRoulette_state.v,
-			autoRoulette_delay_c = autoRoulette_delay.v,
-		},
-		removeTrash = {
-            state_c = removeTrash_enable.v,
-			clearChatAfterConnect_c = removeTrash_clearChatAfterConnect.v,
-			bonus_status_c = removeTrash_bonus_status.v,
-			events_status_c = removeTrash_events_status.v,
-			help_status_c = removeTrash_help_status.v,
-			ad_status_c = removeTrash_ad_status.v,
-			player_status_c = removeTrash_player_status.v,
-			trash_status_c = removeTrash_trash_status.v,
-			phone_status_c = removeTrash_phone_status.v,
-			space_status_c = removeTrash_space_status.v,
-            bus_status_c = removeTrash_bus_status.v,
-            inkasator_status_c = removeTrash_inkasator_status.v,
-			zoloto_status_c = removeTrash_zoloto_status.v,
-			sobes_status_c = removeTrash_sobes_status.v,
-            prison_status_c = removeTrash_prison_status.v,
-			offDesc_state_c = offDesc_state.v,
-			offFam_state_c = offFam_state.v,
-		},
-		setTime = {
-			state_c = setTime_state.v,
-			localTime_state_c = setTime_localTime_state.v,
-			time_c = setTime_time.v,
-			weather_c = setTime_weather.v,
-		},
-		autoPiar = {
-			delay_c = autoPiar_delay.v,
-			text_c = autoPiar_text.v,
-			vr_c = autoPiar_vr.v,
-			ad_c = autoPiar_ad.v,
-			ad_vip_c = autoPiar_ad_vip.v,
-			j_c = autoPiar_j.v,
-			org_c = autoPiar_org.v,
-			selected_org = autoPiar_selected_org.v,
-		},
-		police = {
-			taser_state_c = taser_state.v,
-			rpGuns_state_c = rpGuns_state.v,
-			megafon_state_c = megafon_state.v,
-			autoMiranda_state_c = autoMiranda_state.v,
-			autoRP_state_c = autoRP_state.v,
-			requireSu_state_c = requireSu_state.v,
-		},
-		insurance = {
-			catch_state_c = insuranceCatch_state.v,
-			NY_state_c = insuranceNY_state.v,
-			fill_state_c = insuranceFill_state.v,
-			anim_state_c = insuranceRemoveAnim_state.v,
-		},
-		medic = {
-			
-		},
-	}
-	inicfg.save(newData,"unknown.ini")
 end
 function stringSplit(str, pattern)
     if pattern == nil then
