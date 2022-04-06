@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.5")
+script_version("1.7.6")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -1624,9 +1624,9 @@ function antiDrugs()
     antiDrugs_state = imgui.ImBool(mainIni.settings.antiDrugs_state_c)
     addEventHandler("onReceiveRpc", function(id, bs)
         if id == 93 and antiDrugs_state.v then
-            color = raknetBitStreamReadInt32(bs)
-            textl = raknetBitStreamReadInt32(bs)
-            text = raknetBitStreamReadString(bs, textl)
+            local color = raknetBitStreamReadInt32(bs)
+            local textl = raknetBitStreamReadInt32(bs)
+            local text = raknetBitStreamReadString(bs, textl)
             if tostring(text):match("У вас началась сильная ломка") or tostring(text):match("Вашему персонажу нужно принять") then
                 return false
 			end
@@ -2613,6 +2613,18 @@ function moneySeparate()
 			raknetBitStreamWriteInt16(bs,playerId)
 			raknetBitStreamWriteInt16(bs,vehId)
 			raknetBitStreamEncodeString(bs,text)
+			return true, id, bs
+		end
+		if id == 93 and moneySeparate_state.v then
+            local color = raknetBitStreamReadInt32(bs)
+            local textlenght = raknetBitStreamReadInt32(bs)
+            local text = raknetBitStreamReadString(bs, textl)
+            text = separator(text)
+			raknetDeleteBitStream(bs)
+            bs = raknetNewBitStream()
+			raknetBitStreamWriteInt32(bs,color)
+			raknetBitStreamWriteInt32(bs,text:len())
+			raknetBitStreamWriteString(bs,text)
 			return true, id, bs
 		end
 	end)
