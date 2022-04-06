@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.4")
+script_version("1.7.5")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -491,7 +491,7 @@ function main()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
 	end)
 	imgui.Process = true
-	while true do wait(50)
+	while true do wait(0)
         imgui.ShowCursor = cursorActive
         imgui.LockPlayer = playerLock
 		local newData = {
