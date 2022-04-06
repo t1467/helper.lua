@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.8")
+script_version("1.7.9")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -2506,7 +2506,9 @@ function moneySeparate()
             raknetBitStreamWriteInt8(bs,tonumber(b2l))
             raknetBitStreamWriteString(bs,tostring(b2))
             raknetBitStreamEncodeString(bs,tostring(text))
-            return true, id, bs
+			raknetEmulRpcReceiveBitStream(61,bs)
+			raknetDeleteBitStream(bs)
+            return false
 		end
 		if id == 36 and moneySeparate_state.v then
             local labelId = raknetBitStreamReadInt16(bs)
@@ -2532,7 +2534,9 @@ function moneySeparate()
 			raknetBitStreamWriteInt16(bs,playerId)
 			raknetBitStreamWriteInt16(bs,vehId)
 			raknetBitStreamEncodeString(bs,text)
-			return true, id, bs
+			raknetEmulRpcReceiveBitStream(36,bs)
+			raknetDeleteBitStream(bs)
+			return false
 		end
 		if id == 93 and moneySeparate_state.v then
             local color = raknetBitStreamReadInt32(bs)
@@ -2544,7 +2548,9 @@ function moneySeparate()
 			raknetBitStreamWriteInt32(bs,color)
 			raknetBitStreamWriteInt32(bs,text:len())
 			raknetBitStreamWriteString(bs,text)
-			return true, id, bs
+			raknetEmulRpcReceiveBitStream(93,bs)
+			raknetDeleteBitStream(bs)
+			return false
 		end
 	end)
     while true do wait(0) end
