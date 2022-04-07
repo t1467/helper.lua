@@ -1,7 +1,9 @@
 script_name("UNKNOWN")
-script_version("1.7.9")
+script_version("1.7.10")
 require 'lib.moonloader'
 require 'sampfuncs'
+require 'events'
+require 'ffi'
 local vkeys = require 'vkeys'
 local rkeys = require 'rkeys'
 local memory = require 'memory'
