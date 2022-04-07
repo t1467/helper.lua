@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.11")
+script_version("1.7.12")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -126,6 +126,8 @@ function closeAllWindow()
 	medic_window = false
 end
 function imgui.OnDrawFrame()
+	imgui.ShowCursor = cursorActive
+	imgui.LockPlayer = playerLock
 	if main_window then
 		local resX, resY = getScreenResolution()
 		imgui.SetNextWindowPos(imgui.ImVec2(resX / 2 - 940 / 2, resY / 2 - 490 / 2), imgui.Cond.Always)
@@ -435,8 +437,9 @@ theme()
 function main()
 	repeat wait(0) until isSampAvailable()
 	lua_thread.create(function()
-        while true do wait(10000)
+        while true do
             autoupdate("https://raw.githubusercontent.com/t1467/helper.lua/main/update.json", '['..string.upper(thisScript().name)..']: ', "")
+			wait(10000)
 		end
 	end)
 	lua_thread.create(activate)
@@ -506,8 +509,6 @@ function main()
 	imgui.Process = true
 	while true do wait(0)
 		pcall(function() save() end)
-		pcall(function() imgui.ShowCursor = cursorActive end)
-		pcall(function() imgui.LockPlayer = playerLock end)
 	end
 end
 function onWindowMessage(msg, wparam, lparam)
