@@ -1,9 +1,7 @@
 script_name("UNKNOWN")
-script_version("1.7.10")
+script_version("1.7.11")
 require 'lib.moonloader'
 require 'sampfuncs'
-require 'events'
-require 'ffi'
 local vkeys = require 'vkeys'
 local rkeys = require 'rkeys'
 local memory = require 'memory'
@@ -507,9 +505,9 @@ function main()
 	end)
 	imgui.Process = true
 	while true do wait(0)
-        imgui.ShowCursor = cursorActive
-        imgui.LockPlayer = playerLock
 		pcall(function() save() end)
+		pcall(function() imgui.ShowCursor = cursorActive end)
+		pcall(function() imgui.LockPlayer = playerLock end)
 	end
 end
 function onWindowMessage(msg, wparam, lparam)
