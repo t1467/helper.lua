@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.12")
+script_version("1.7.13")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -99,9 +99,6 @@ local mainIni = inicfg.load({
 		NY_state_c = false,
 		fill_state_c = false,
 		anim_state_c = false,
-	},
-	medic = {
-		
 	},
 },"unknown.ini")
 cursorActive = false
@@ -3649,9 +3646,6 @@ function save()
 			NY_state_c = insuranceNY_state.v,
 			fill_state_c = insuranceFill_state.v,
 			anim_state_c = insuranceRemoveAnim_state.v,
-		},
-		medic = {
-			
 		},
 	}
 	inicfg.save(newData,"unknown.ini")
