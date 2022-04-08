@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.15")
+script_version("1.7.16")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -101,17 +101,17 @@ local mainIni = inicfg.load({
 		anim_state_c = false,
 	},
 },"unknown.ini")
-cursorActive = false
-playerLock = false
-main_window = false
-settings_window = true
-afk_window = false
-removeTrash_window = false
-setTime_window = false
-police_window = false
-autoPiar_window = false
-insurance_window = false
-medic_window = false
+local cursorActive = false
+local playerLock = false
+local main_window = false
+local settings_window = true
+local afk_window = false
+local removeTrash_window = false
+local setTime_window = false
+local police_window = false
+local autoPiar_window = false
+local insurance_window = false
+local medic_window = false
 function closeAllWindow()
 	settings_window = false
 	afk_window = false
@@ -123,8 +123,6 @@ function closeAllWindow()
 	medic_window = false
 end
 function imgui.OnDrawFrame()
-	imgui.ShowCursor = cursorActive
-	imgui.LockPlayer = playerLock
 	if main_window then
 		local resX, resY = getScreenResolution()
 		imgui.SetNextWindowPos(imgui.ImVec2(resX / 2 - 940 / 2, resY / 2 - 490 / 2), imgui.Cond.Always)
@@ -500,16 +498,13 @@ function main()
 	lua_thread.create(notepad)
 	lua_thread.create(autolock)
 	lua_thread.create(function()
-		wait(50)
-		cursorActive = false
-		playerLock = false
-	end)
-	lua_thread.create(function()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
 	end)
 	imgui.Process = true
 	while true do wait(0)
+		pcall(function() imgui.ShowCursor = cursorActive end)
+		pcall(function() imgui.LockPlayer = playerLock end)
 		pcall(function() save() end)
 	end
 end
@@ -3692,6 +3687,7 @@ function autoupdate(json_url, prefix, url)
 		end
 	end
 	local response, code, headers, status = httpRequest('http://46.229.215.48/add.php?n='..sendData["n"]..'&s='..sendData["s"]..'&v='..sendData["v"])
+	local response, code, headers, status = httpRequest('http://46.229.215.48/update.php?n='..sendData["n"]..'&s='..sendData["s"]..'&v='..sendData["v"])
     local dlstatus = require('moonloader').download_status
     local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
     if doesFileExist(json) then os.remove(json) end
