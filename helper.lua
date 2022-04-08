@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.13")
+script_version("1.7.14")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -499,6 +499,11 @@ function main()
 	lua_thread.create(sbiv)
 	lua_thread.create(notepad)
 	lua_thread.create(autolock)
+	lua_thread.create(function()
+		wait(50)
+		cursorActive = false
+		playerLock = false
+	end)
 	lua_thread.create(function()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
