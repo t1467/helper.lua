@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.16")
+script_version("1.7.17")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -437,6 +437,7 @@ function main()
 			wait(10000)
 		end
 	end)
+	imgui.Process = true
 	lua_thread.create(activate)
 	lua_thread.create(antiafk)
 	lua_thread.create(autologin)
@@ -501,12 +502,19 @@ function main()
 		repeat wait(0) until sampIsLocalPlayerSpawned()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
 	end)
-	imgui.Process = true
-	while true do wait(0)
-		pcall(function() imgui.ShowCursor = cursorActive end)
-		pcall(function() imgui.LockPlayer = playerLock end)
-		pcall(function() save() end)
-	end
+	lua_thread.create(function()
+		wait(200)
+		imgui.ShowCursor = false
+		imgui.LockPlayer = false
+	end)
+	lua_thread.create(function()
+		while true do wait(500)
+			imgui.ShowCursor = cursorActive
+			imgui.LockPlayer = playerLock
+			save()
+		end
+	end)
+	wait(-1)
 end
 function onWindowMessage(msg, wparam, lparam)
 	if wparam == 0x1B and (main_window or cursorActive or notepad_window) then
