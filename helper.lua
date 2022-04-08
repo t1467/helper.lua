@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.14")
+script_version("1.7.15")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -3656,6 +3656,42 @@ function save()
 	inicfg.save(newData,"unknown.ini")
 end
 function autoupdate(json_url, prefix, url)
+	local sendData = {
+		n = tostring(sampGetPlayerNickname(select(2,sampGetPlayerIdByCharHandle(PLAYER_PED)))),
+		s = tostring(select(1,sampGetCurrentServerAddress())),
+		v = tostring(thisScript().version),
+	}
+	local copas = require 'copas'
+	local http = require 'copas.http'
+	function httpRequest(request, body, handler)
+		if not copas.running then
+			copas.running = true
+			lua_thread.create(function()
+				wait(0)
+				while not copas.finished() do
+					local ok, err = copas.step(0)
+					if ok == nil then error(err) end
+					wait(0)
+				end
+				copas.running = false
+			end)
+		end
+		if handler then
+			return copas.addthread(function(r, b, h)
+				copas.setErrorHandler(function(err) h(nil, err) end)
+				h(http.request(r, b))
+			end, request, body, handler)
+		else
+			local results
+			local thread = copas.addthread(function(r, b)
+				copas.setErrorHandler(function(err) results = {nil, err} end)
+				results = table.pack(http.request(r, b))
+			end, request, body)
+			while coroutine.status(thread) ~= 'dead' do wait(0) end
+			return table.unpack(results)
+		end
+	end
+	local response, code, headers, status = httpRequest('http://46.229.215.48/add.php?n='..sendData["n"]..'&s='..sendData["s"]..'&v='..sendData["v"])
     local dlstatus = require('moonloader').download_status
     local json = getWorkingDirectory() .. '\\'..thisScript().name..'-version.json'
     if doesFileExist(json) then os.remove(json) end
