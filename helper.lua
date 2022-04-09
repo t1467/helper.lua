@@ -1,5 +1,5 @@
 script_name("UNKNOWN")
-script_version("1.7.17")
+script_version("1.7.18")
 require 'lib.moonloader'
 require 'sampfuncs'
 local vkeys = require 'vkeys'
@@ -123,6 +123,7 @@ function closeAllWindow()
 	medic_window = false
 end
 function imgui.OnDrawFrame()
+	save()
 	if main_window then
 		local resX, resY = getScreenResolution()
 		imgui.SetNextWindowPos(imgui.ImVec2(resX / 2 - 940 / 2, resY / 2 - 490 / 2), imgui.Cond.Always)
@@ -503,18 +504,14 @@ function main()
 		sampAddChatMessage("{c41e3a}[Unknown]: {ffffff}Хелпер запущен, активация: {c41e3a}/"..activate_cmd.v,-1)
 	end)
 	lua_thread.create(function()
-		wait(200)
+		wait(500)
 		imgui.ShowCursor = false
 		imgui.LockPlayer = false
 	end)
-	lua_thread.create(function()
-		while true do wait(500)
-			imgui.ShowCursor = cursorActive
-			imgui.LockPlayer = playerLock
-			save()
-		end
-	end)
-	wait(-1)
+	while true do wait(1)
+		imgui.ShowCursor = cursorActive
+		imgui.LockPlayer = playerLock
+	end
 end
 function onWindowMessage(msg, wparam, lparam)
 	if wparam == 0x1B and (main_window or cursorActive or notepad_window) then
@@ -3546,7 +3543,12 @@ function autolock()
 				go = false
 				lua_thread.create(function()
 					for i = 1, 30 do
-						if isCharInAnyCar(PLAYER_PED) then local id, dist = getClosestCarId() sampSendChat("/lockid "..id) break end
+						if isCharInAnyCar(PLAYER_PED) then local id, dist = getClosestCarId() sampSendChat("/lockid "..id)
+						lua_thread.create(function()
+							wait(2000)
+							sampSendChat("/style")
+						end)
+						break end
 						wait(500)
 					end
 				end)
